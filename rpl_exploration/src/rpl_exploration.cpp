@@ -69,12 +69,13 @@ int main(int argc, char** argv)
   double init_yaw = tf2::getYaw(init_pose->pose.orientation);
   // Up 2 meters and then forward one meter
   std::vector<Eigen::Vector4d> initial_positions;
-  initial_positions.push_back(Eigen::Vector4d(init_pose->pose.position.x, init_pose->pose.position.y, 2.0, init_yaw));
+  initial_positions.emplace_back(init_pose->pose.position.x, init_pose->pose.position.y, 0.0, init_yaw);
+  initial_positions.emplace_back(init_pose->pose.position.x, init_pose->pose.position.y, 0.5, init_yaw);
   double move_forward_distance = 0.0;
   double yaw_radians = M_PI;
-  initial_positions.push_back(Eigen::Vector4d(init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
-                                              init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw),
-                                              2.0, init_yaw + yaw_radians));
+  initial_positions.emplace_back(init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
+                                 init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
+                                 init_yaw + yaw_radians);
 
   // This is the initialization motion, necessary that the known free space
   // allows the planning of initial paths.
