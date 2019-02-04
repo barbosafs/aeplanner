@@ -735,10 +735,9 @@ void AEPlanner::createLTLSearchDistance()
   ltl_search_distances_.clear();
 
   double res = ot_->getResolution();
-  double maximum = res * ltl_max_search_distance_;
-  for (double x = -maximum; x < maximum; x += res)
+  for (double x = -ltl_max_search_distance_; x < ltl_max_search_distance_; x += res)
   {
-    for (double y = -maximum; y < maximum; y += res)
+    for (double y = -ltl_max_search_distance_; y < ltl_max_search_distance_; y += res)
     {
       octomap::point3d point(x, y, 0);
 
