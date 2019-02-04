@@ -4,29 +4,31 @@ namespace aeplanner
 {
 visualization_msgs::MarkerArray createRRTMarkerArray(
     RRTNode* root, std::shared_ptr<octomap::OcTree> ot, Eigen::Vector4d current_state,
-    double ltl_lambda, double max_distance, bool safety_first, double lambda)
+    double ltl_lambda, double min_distance, double max_distance, bool safety_first,
+    double lambda)
 {
   int id = 0;
   visualization_msgs::MarkerArray marker_array;
-  recurse(root, &marker_array, &id, ot, current_state, ltl_lambda, max_distance,
-          safety_first, lambda);
+  recurse(root, &marker_array, &id, ot, current_state, ltl_lambda, min_distance,
+          max_distance, safety_first, lambda);
 
   return marker_array;
 }
 void recurse(RRTNode* node, visualization_msgs::MarkerArray* marker_array, int* id,
              std::shared_ptr<octomap::OcTree> ot, Eigen::Vector4d current_state,
-             double ltl_lambda, double max_distance, bool safety_first, double lambda)
+             double ltl_lambda, double min_distance, double max_distance,
+             bool safety_first, double lambda)
 {
   for (std::vector<RRTNode*>::iterator child_it = node->children_.begin();
        child_it != node->children_.end(); ++child_it)
   {
     RRTNode* child = (*child_it);
     if (child)
-      recurse(child, marker_array, id, ot, current_state, ltl_lambda, max_distance,
-              safety_first, lambda);
-    marker_array->markers.push_back(createEdgeMarker(child, (*id), "map", ot,
-                                                     current_state, ltl_lambda,
-                                                     max_distance, safety_first, lambda));
+      recurse(child, marker_array, id, ot, current_state, ltl_lambda, min_distance,
+              max_distance, safety_first, lambda);
+    marker_array->markers.push_back(
+        createEdgeMarker(child, (*id), "map", ot, current_state, ltl_lambda, min_distance,
+                         max_distance, safety_first, lambda));
     marker_array->markers.push_back(createNodeMarker(child, (*id)++, "map"));
   }
 
@@ -68,8 +70,9 @@ visualization_msgs::Marker createNodeMarker(RRTNode* node, int id, std::string f
 visualization_msgs::Marker createEdgeMarker(RRTNode* node, int id, std::string frame_id,
                                             std::shared_ptr<octomap::OcTree> ot,
                                             Eigen::Vector4d current_state,
-                                            double ltl_lambda, double max_distance,
-                                            bool safety_first, double lambda)
+                                            double ltl_lambda, double min_distance,
+                                            double max_distance, bool safety_first,
+                                            double lambda)
 {
   visualization_msgs::Marker a;
   a.header.stamp = ros::Time::now();
@@ -96,7 +99,9 @@ visualization_msgs::Marker createEdgeMarker(RRTNode* node, int id, std::string f
   a.scale.x = dir.norm();
   a.scale.y = 0.03;
   a.scale.z = 0.03;
-  a.color.r = node->score(ot, ltl_lambda, max_distance, safety_first, lambda) / 60.0;
+  a.color.r =
+      node->score(ot, ltl_lambda, min_distance, max_distance, safety_first, lambda) /
+      60.0;
   a.color.g = 0.0;
   a.color.b = 1.0;
   a.color.a = 1.0;

@@ -63,7 +63,7 @@ public:
   }
 
   double score(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda,
-               double max_distance, bool safety_first, double lambda)
+               double min_distance, double max_distance, bool safety_first, double lambda)
   {
     if (score_ot_ && ot == score_ot_)
     {
@@ -79,19 +79,20 @@ public:
     }
 
     double closest_distance = getDistanceToClosestOccupiedBounded(ot, 10);
-    double distance_gain = (safety_first) ? closest_distance - max_distance :
-                                            max_distance - closest_distance;
+    double distance_gain =
+        std::min(closest_distance - min_distance, max_distance - closest_distance);
     distance_gain = std::exp(-ltl_lambda * distance_gain);
 
     score_ =
-        this->parent_->score(ot, ltl_lambda, max_distance, safety_first, lambda) +
+        this->parent_->score(ot, ltl_lambda, min_distance, max_distance, safety_first,
+                             lambda) +
         this->gain_ *
             exp(-lambda * (this->distance(this->parent_) * std::fmax(distance_gain, 1)));
     return score_;
   }
 
-  double cost(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double max_distance,
-              bool safety_first)
+  double cost(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double min_distance,
+              double max_distance, bool safety_first)
   {
     if (cost_ot_ && ot == cost_ot_)
     {
@@ -107,12 +108,12 @@ public:
     }
 
     double closest_distance = getDistanceToClosestOccupiedBounded(ot, 10);
-    double distance_gain = (safety_first) ? closest_distance - max_distance :
-                                            max_distance - closest_distance;
+    double distance_gain =
+        std::min(closest_distance - min_distance, max_distance - closest_distance);
     distance_gain = std::exp(-ltl_lambda * distance_gain);
 
     cost_ = (this->distance(this->parent_) * std::fmax(distance_gain, 1)) +
-            this->parent_->cost(ot, ltl_lambda, max_distance, safety_first);
+            this->parent_->cost(ot, ltl_lambda, min_distance, max_distance, safety_first);
     return cost_;
   }
 

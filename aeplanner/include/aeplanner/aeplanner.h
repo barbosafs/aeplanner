@@ -71,6 +71,7 @@ private:
 
   // LTL
   double ltl_lambda_;
+  double ltl_min_distance_;
   double ltl_max_distance_;
   bool ltl_safety_first_;
   dynamic_reconfigure::Server<aeplanner::LTLConfig> ltl_cs_;
