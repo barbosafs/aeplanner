@@ -73,12 +73,15 @@ private:
   double ltl_lambda_;
   double ltl_min_distance_;
   double ltl_max_distance_;
-  bool ltl_safety_first_;
+  bool ltl_min_distance_active_;
+  bool ltl_max_distance_active_;
   dynamic_reconfigure::Server<aeplanner::LTLConfig> ltl_cs_;
   dynamic_reconfigure::Server<aeplanner::LTLConfig>::CallbackType ltl_f_;
   nav_msgs::Path ltl_path_;
   double ltl_dist_add_path_;
   ros::Publisher ltl_path_pub_;
+  double ltl_max_search_distance_;
+  std::vector<std::pair<octomap::point3d, double>> ltl_search_distances_;
 
   // Service server callback
   bool reevaluate(aeplanner::Reevaluate::Request& req,
@@ -115,6 +118,7 @@ private:
   geometry_msgs::PoseArray getFrontiers();
 
   // LTL
+  void createLTLSearchDistance();
   void configCallback(aeplanner::LTLConfig& config, uint32_t level);
 
 public:

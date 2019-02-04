@@ -62,8 +62,40 @@ public:
     return new_node;
   }
 
+  double getDistanceGain(
+      std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double min_distance,
+      double max_distance, bool min_distance_active, bool max_distance_active,
+      std::vector<std::pair<octomap::point3d, double>> search_distances)
+  {
+    double closest_distance = 0;
+    if (min_distance_active || max_distance_active)
+    {
+      closest_distance = getDistanceToClosestOccupiedBounded(ot, search_distances);
+    }
+
+    double distance_gain = 0;
+    if (min_distance_active && max_distance_active)
+    {
+      distance_gain =
+          std::min(closest_distance - min_distance, max_distance - closest_distance);
+    }
+    else if (min_distance_active)
+    {
+      distance_gain = closest_distance - min_distance;
+    }
+    else
+    {
+      distance_gain = max_distance - closest_distance;
+    }
+
+    return std::exp(-ltl_lambda * distance_gain);
+  }
+
   double score(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda,
-               double min_distance, double max_distance, bool safety_first, double lambda)
+               double min_distance, double max_distance, bool min_distance_active,
+               bool max_distance_active,
+               std::vector<std::pair<octomap::point3d, double>> search_distances,
+               double lambda)
   {
     if (score_ot_ && ot == score_ot_)
     {
@@ -78,13 +110,13 @@ public:
       return score_;
     }
 
-    double closest_distance = getDistanceToClosestOccupiedBounded(ot, 10);
     double distance_gain =
-        std::min(closest_distance - min_distance, max_distance - closest_distance);
-    distance_gain = std::exp(-ltl_lambda * distance_gain);
+        getDistanceGain(ot, ltl_lambda, min_distance, max_distance, min_distance_active,
+                        max_distance_active, search_distances);
 
     score_ =
-        this->parent_->score(ot, ltl_lambda, min_distance, max_distance, safety_first,
+        this->parent_->score(ot, ltl_lambda, min_distance, max_distance,
+                             min_distance_active, max_distance_active, search_distances,
                              lambda) +
         this->gain_ *
             exp(-lambda * (this->distance(this->parent_) * std::fmax(distance_gain, 1)));
@@ -92,7 +124,8 @@ public:
   }
 
   double cost(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double min_distance,
-              double max_distance, bool safety_first)
+              double max_distance, bool min_distance_active, bool max_distance_active,
+              std::vector<std::pair<octomap::point3d, double>> search_distances)
   {
     if (cost_ot_ && ot == cost_ot_)
     {
@@ -107,39 +140,36 @@ public:
       return cost_;
     }
 
-    double closest_distance = getDistanceToClosestOccupiedBounded(ot, 10);
     double distance_gain =
-        std::min(closest_distance - min_distance, max_distance - closest_distance);
-    distance_gain = std::exp(-ltl_lambda * distance_gain);
+        getDistanceGain(ot, ltl_lambda, min_distance, max_distance, min_distance_active,
+                        max_distance_active, search_distances);
 
-    cost_ = (this->distance(this->parent_) * std::fmax(distance_gain, 1)) +
-            this->parent_->cost(ot, ltl_lambda, min_distance, max_distance, safety_first);
+    cost_ =
+        (this->distance(this->parent_) * std::fmax(distance_gain, 1)) +
+        this->parent_->cost(ot, ltl_lambda, min_distance, max_distance,
+                            min_distance_active, max_distance_active, search_distances);
     return cost_;
   }
 
-  double getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree> ot,
-                                             double max_distance)
+  double getDistanceToClosestOccupiedBounded(
+      std::shared_ptr<octomap::OcTree> ot,
+      std::vector<std::pair<octomap::point3d, double>> search_distances)
   {
-    // TODO: OPTIMIZE. Start from current_state and move outwards
+    octomap::point3d state(state_[0], state_[1], state_[2]);
 
-    octomap::point3d distance_point(max_distance, max_distance, 0);
-    octomap::point3d oc_point(state_[0], state_[1], state_[2]);
-
-    double min_distance = max_distance;
-
-    for (octomap::OcTree::leaf_bbx_iterator
-             it = ot->begin_leafs_bbx(oc_point - distance_point,
-                                      oc_point + distance_point),
-             it_end = ot->end_leafs_bbx();
-         it != it_end; ++it)
+    for (std::pair<octomap::point3d, double> point : search_distances)
     {
-      if (ot->isNodeOccupied(*it))
+      octomap::OcTreeNode* node = ot->search(state + point.first);
+      if (node)
       {
-        min_distance = std::min(min_distance, (oc_point - it.getCoordinate()).norm());
+        if (ot->isNodeOccupied(node))
+        {
+          return point.second;
+        }
       }
     }
 
-    return min_distance;
+    return 1000000;
   }
 
   double distance(RRTNode* other)

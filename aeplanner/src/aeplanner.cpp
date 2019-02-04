@@ -54,13 +54,19 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
     return;
   }
 
+  if (ltl_search_distances_.size() == 0)
+  {
+    createLTLSearchDistance();
+  }
+
   ROS_DEBUG("Init");
   RRTNode* root = initialize();
   ROS_DEBUG("expandRRT");
   ROS_WARN_STREAM(root->gain_ << " " << root->children_.size());
   if (root->gain_ > 0.25 or !root->children_.size() or
       root->score(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                  ltl_safety_first_, params_.lambda) < params_.zero_gain)
+                  ltl_min_distance_active_, ltl_max_distance_active_,
+                  ltl_search_distances_, params_.lambda) < params_.zero_gain)
     expandRRT();
   else
     best_node_ = root->children_[0];
@@ -69,16 +75,18 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
   best_branch_root_ = best_node_->getCopyOfParentBranch();
 
   ROS_DEBUG("createRRTMarker");
-  rrt_marker_pub_.publish(createRRTMarkerArray(root, ot, current_state, ltl_lambda_,
-                                               ltl_min_distance_, ltl_max_distance_,
-                                               ltl_safety_first_, params_.lambda));
+  rrt_marker_pub_.publish(createRRTMarkerArray(
+      root, ot, current_state, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+      ltl_min_distance_active_, ltl_max_distance_active_, ltl_search_distances_,
+      params_.lambda));
   ROS_DEBUG("publishRecursive");
   publishEvaluatedNodesRecursive(root);
 
   ROS_DEBUG("extractPose");
   result.pose.pose = vecToPose(best_branch_root_->children_[0]->state_);
   if (best_node_->score(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                        ltl_safety_first_, params_.lambda) > params_.zero_gain)
+                        ltl_min_distance_active_, ltl_max_distance_active_,
+                        ltl_search_distances_, params_.lambda) > params_.zero_gain)
     result.is_clear = true;
   else
   {
@@ -160,12 +168,13 @@ void AEPlanner::expandRRT()
 
   // Expand an RRT tree and calculate information gain in every node
   ROS_DEBUG_STREAM("Entering expanding RRT");
-  for (int n = 0;
-       (n < params_.init_iterations or
-        (n < params_.cutoff_iterations and
-         best_node_->score(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                           ltl_safety_first_, params_.lambda) < params_.zero_gain)) and
-       ros::ok();
+  for (int n = 0; (n < params_.init_iterations or
+                   (n < params_.cutoff_iterations and
+                    best_node_->score(ot, ltl_lambda_, ltl_min_distance_,
+                                      ltl_max_distance_, ltl_min_distance_active_,
+                                      ltl_max_distance_active_, ltl_search_distances_,
+                                      params_.lambda) < params_.zero_gain)) and
+                  ros::ok();
        ++n)
   {
     ROS_DEBUG_STREAM("In expand RRT iteration: " << n);
@@ -230,9 +239,11 @@ void AEPlanner::expandRRT()
     ROS_DEBUG_STREAM("Update best node");
     if (!best_node_ or
         new_node->score(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                        ltl_safety_first_, params_.lambda) >
+                        ltl_min_distance_active_, ltl_max_distance_active_,
+                        ltl_search_distances_, params_.lambda) >
             best_node_->score(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                              ltl_safety_first_, params_.lambda))
+                              ltl_min_distance_active_, ltl_max_distance_active_,
+                              ltl_search_distances_, params_.lambda))
       best_node_ = new_node;
 
     ROS_DEBUG_STREAM("iteration Done!");
@@ -278,13 +289,15 @@ RRTNode* AEPlanner::chooseParent(RRTNode* node, double l)
   RRTNode* node_nn = (RRTNode*)kd_res_item_data(nearest);
 
   RRTNode* best_node = node_nn;
-  double best_node_cost = best_node->cost(ot, ltl_lambda_, ltl_min_distance_,
-                                          ltl_max_distance_, ltl_safety_first_);
+  double best_node_cost = best_node->cost(
+      ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_, ltl_min_distance_active_,
+      ltl_max_distance_active_, ltl_search_distances_);
   while (!kd_res_end(nearest))
   {
     node_nn = (RRTNode*)kd_res_item_data(nearest);
     double node_cost = node_nn->cost(ot, ltl_lambda_, ltl_min_distance_,
-                                     ltl_max_distance_, ltl_safety_first_);
+                                     ltl_max_distance_, ltl_min_distance_active_,
+                                     ltl_max_distance_active_, ltl_search_distances_);
     if (best_node and node_cost < best_node_cost)
     {
       best_node = node_nn;
@@ -313,9 +326,11 @@ void AEPlanner::rewire(kdtree* kd_tree, RRTNode* new_node, double l, double r,
     Eigen::Vector3d p1(new_node->state_[0], new_node->state_[1], new_node->state_[2]);
     Eigen::Vector3d p2(node_nn->state_[0], node_nn->state_[1], node_nn->state_[2]);
     if (node_nn->cost(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                      ltl_safety_first_) >
+                      ltl_min_distance_active_, ltl_max_distance_active_,
+                      ltl_search_distances_) >
         new_node->cost(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                       ltl_safety_first_) +
+                       ltl_min_distance_active_, ltl_max_distance_active_,
+                       ltl_search_distances_) +
             (p1 - p2).norm())
     {
       if (!collisionLine(new_node->state_, node_nn->state_, r))
@@ -701,13 +716,51 @@ float AEPlanner::CylTest_CapsFirst(const octomap::point3d& pt1,
   }
 }
 
+struct
+{
+  bool operator()(const std::pair<octomap::point3d, double>& lhs,
+                  const std::pair<octomap::point3d, double>& rhs) const
+  {
+    return lhs.second < rhs.second;
+  }
+} compareByDistance;
+
+void AEPlanner::createLTLSearchDistance()
+{
+  if (!ot_)
+  {
+    return;
+  }
+
+  ltl_search_distances_.clear();
+
+  double res = ot_->getResolution();
+  double maximum = res * ltl_max_search_distance_;
+  for (double x = -maximum; x < maximum; x += res)
+  {
+    for (double y = -maximum; y < maximum; y += res)
+    {
+      octomap::point3d point(x, y, 0);
+
+      ltl_search_distances_.push_back(std::make_pair(point, std::hypot(x, y)));
+    }
+  }
+
+  std::sort(ltl_search_distances_.begin(), ltl_search_distances_.end(),
+            compareByDistance);
+}
+
 void AEPlanner::configCallback(aeplanner::LTLConfig& config, uint32_t level)
 {
   ltl_lambda_ = config.lambda;
   ltl_min_distance_ = config.min_distance;
   ltl_max_distance_ = config.max_distance;
-  ltl_safety_first_ = config.safety_first;
+  ltl_min_distance_active_ = config.min_distance_active;
+  ltl_max_distance_active_ = config.max_distance_active;
   ltl_dist_add_path_ = config.distance_add_path;
+  ltl_max_search_distance_ = config.max_search_distance;
+
+  createLTLSearchDistance();
 }
 
 }  // namespace aeplanner
