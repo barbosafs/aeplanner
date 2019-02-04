@@ -65,7 +65,7 @@ public:
   double getDistanceGain(
       std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double min_distance,
       double max_distance, bool min_distance_active, bool max_distance_active,
-      std::vector<std::pair<octomap::point3d, double>> search_distances)
+      const std::vector<std::pair<octomap::point3d, double>>& search_distances)
   {
     double closest_distance = 0;
     if (min_distance_active || max_distance_active)
@@ -94,7 +94,7 @@ public:
   double score(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda,
                double min_distance, double max_distance, bool min_distance_active,
                bool max_distance_active,
-               std::vector<std::pair<octomap::point3d, double>> search_distances,
+               const std::vector<std::pair<octomap::point3d, double>>& search_distances,
                double lambda)
   {
     if (score_ot_ && ot == score_ot_)
@@ -125,7 +125,7 @@ public:
 
   double cost(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double min_distance,
               double max_distance, bool min_distance_active, bool max_distance_active,
-              std::vector<std::pair<octomap::point3d, double>> search_distances)
+              const std::vector<std::pair<octomap::point3d, double>>& search_distances)
   {
     if (cost_ot_ && ot == cost_ot_)
     {
@@ -153,7 +153,7 @@ public:
 
   double getDistanceToClosestOccupiedBounded(
       std::shared_ptr<octomap::OcTree> ot,
-      std::vector<std::pair<octomap::point3d, double>> search_distances)
+      const std::vector<std::pair<octomap::point3d, double>>& search_distances)
   {
     octomap::point3d state(state_[0], state_[1], state_[2]);
 
