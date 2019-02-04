@@ -23,8 +23,8 @@ Rrt::Rrt(const ros::NodeHandle& nh)
   if (!ros::param::get(ns + "/aep/tree/extension_range", extension_range_))
     ROS_WARN("No extension range specified, default is 1.0 m");
 
-  ot_ = std::make_shared<octomap::OcTree>(
-      1);  // Create dummy OcTree to prevent crash due to ot_ tree not initialized
+  ot_ = std::make_shared<octomap::OcTree>(1);  // Create dummy OcTree to prevent crash due
+                                               // to ot_ tree not initialized
   as_.start();
 }
 
@@ -52,8 +52,7 @@ void Rrt::execute(const rrtplanner::rrtGoalConstPtr& goal)
 
   kdtree* kd_tree = kd_create(3);    // Initalize tree
   kdtree* goal_tree = kd_create(3);  // kd tree with all goals
-  ROS_WARN_STREAM(
-      "We have this many goals for RRT: " << goal->goal_poses.poses.size());
+  ROS_WARN_STREAM("We have this many goals for RRT: " << goal->goal_poses.poses.size());
   for (int i = 0; i < goal->goal_poses.poses.size(); ++i)
   {
     Eigen::Vector3d* g = new Eigen::Vector3d(goal->goal_poses.poses[i].position.x,
@@ -74,7 +73,6 @@ void Rrt::execute(const rrtplanner::rrtGoalConstPtr& goal)
   visualizeNode(goal->start.pose.position, 1000);
   visualizeGoals(goal->goal_poses.poses);
 
-  ROS_WARN("RRT PLANNING");
   for (int i = 0; i < N /* or !found_goals.size() */; ++i)
   {
     // Sample new position
@@ -101,7 +99,6 @@ void Rrt::execute(const rrtplanner::rrtGoalConstPtr& goal)
       RrtNode* tmp_goal = getGoal(goal_tree, z_new, l, r, r_os);
       if (tmp_goal)
       {
-        ROS_WARN("PUSHING A GOAL!!!");
         found_goals.push_back(tmp_goal);
       }
     }
@@ -188,8 +185,7 @@ void Rrt::rewire(kdtree* kd_tree, RrtNode* new_node, double l, double r, double 
   }
 }
 
-Eigen::Vector3d Rrt::getNewPos(Eigen::Vector3d sampled, Eigen::Vector3d parent,
-                               double l)
+Eigen::Vector3d Rrt::getNewPos(Eigen::Vector3d sampled, Eigen::Vector3d parent, double l)
 {
   Eigen::Vector3d direction = sampled - parent;
   if (direction.norm() > l)
@@ -198,16 +194,14 @@ Eigen::Vector3d Rrt::getNewPos(Eigen::Vector3d sampled, Eigen::Vector3d parent,
   return parent + direction;
 }
 
-RrtNode* Rrt::addNodeToTree(kdtree* kd_tree, RrtNode* parent,
-                            Eigen::Vector3d new_pos)
+RrtNode* Rrt::addNodeToTree(kdtree* kd_tree, RrtNode* parent, Eigen::Vector3d new_pos)
 {
   RrtNode* new_node = new RrtNode;
   new_node->pos = new_pos;
 
   new_node->parent = parent;
   parent->children.push_back(new_node);
-  kd_insert3(kd_tree, new_node->pos[0], new_node->pos[1], new_node->pos[2],
-             new_node);
+  kd_insert3(kd_tree, new_node->pos[0], new_node->pos[1], new_node->pos[2], new_node);
 
   return new_node;
 }
@@ -226,8 +220,8 @@ RrtNode* Rrt::getGoal(kdtree* goal_tree, RrtNode* new_node, double l, double r,
   kd_res_free(nearest_goal);
 
   if ((*g_nn - new_node->pos).norm() < 1.5)
-    if (!collisionLine(new_node->pos,
-                       *g_nn + (*g_nn - new_node->pos).normalized() * r_os, r))
+    if (!collisionLine(new_node->pos, *g_nn + (*g_nn - new_node->pos).normalized() * r_os,
+                       r))
       return new_node;
 
   return NULL;
@@ -259,8 +253,7 @@ nav_msgs::Path Rrt::getBestPath(std::vector<RrtNode*> goals)
     // Zero out rotation along
     // x and y axis so only
     // yaw is kept
-    Eigen::Vector3d dir(n->pos[0] - n->parent->pos[0], n->pos[1] - n->parent->pos[1],
-                        0);
+    Eigen::Vector3d dir(n->pos[0] - n->parent->pos[0], n->pos[1] - n->parent->pos[1], 0);
     q.setFromTwoVectors(init, dir);
 
     p.pose.orientation.x = q.x();
@@ -296,8 +289,8 @@ std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(kdtree* goal_tree,
 
   if ((*g_nn - new_node->pos).norm() < 2 * l)
   {
-    if (!collisionLine(new_node->pos,
-                       *g_nn + (*g_nn - new_node->pos).normalized() * r_os, r))
+    if (!collisionLine(new_node->pos, *g_nn + (*g_nn - new_node->pos).normalized() * r_os,
+                       r))
     {
       RrtNode* n = new_node;
       for (int id = 0; n->parent; ++id)
@@ -311,8 +304,8 @@ std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(kdtree* goal_tree,
         // Zero out rotation
         // along x and y axis
         // so only yaw is kept
-        Eigen::Vector3d dir(n->pos[0] - n->parent->pos[0],
-                            n->pos[1] - n->parent->pos[1], 0);
+        Eigen::Vector3d dir(n->pos[0] - n->parent->pos[0], n->pos[1] - n->parent->pos[1],
+                            0);
         q.setFromTwoVectors(init, dir);
 
         p.orientation.x = q.x();

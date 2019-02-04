@@ -33,6 +33,9 @@ AEPlanner::AEPlanner(const ros::NodeHandle& nh)
 
 void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
 {
+  std::shared_ptr<octomap::OcTree> ot = ot_;
+  Eigen::Vector4d current_state = current_state_;
+
   ROS_ERROR_STREAM("Execute start!");
   aeplanner::aeplannerResult result;
 
@@ -44,7 +47,7 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
     as_.setSucceeded(result);
     return;
   }
-  if (!ot_)
+  if (!ot)
   {
     ROS_WARN("No octomap received");
     as_.setSucceeded(result);
@@ -56,7 +59,8 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
   ROS_DEBUG("expandRRT");
   ROS_WARN_STREAM(root->gain_ << " " << root->children_.size());
   if (root->gain_ > 0.25 or !root->children_.size() or
-      root->score(params_.lambda) < params_.zero_gain)
+      root->score(ot, current_state, ltl_lambda_, ltl_max_distance_, ltl_safety_first_,
+                  params_.lambda) < params_.zero_gain)
     expandRRT();
   else
     best_node_ = root->children_[0];
@@ -65,17 +69,16 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
   best_branch_root_ = best_node_->getCopyOfParentBranch();
 
   ROS_DEBUG("createRRTMarker");
-  rrt_marker_pub_.publish(createRRTMarkerArray(root, params_.lambda));
+  rrt_marker_pub_.publish(createRRTMarkerArray(root, ot, current_state, ltl_lambda_,
+                                               ltl_max_distance_, ltl_safety_first_,
+                                               params_.lambda));
   ROS_DEBUG("publishRecursive");
   publishEvaluatedNodesRecursive(root);
-  ROS_DEBUG("Publish LTL Path");
-  ltl_path_.header.frame_id = "map";
-  ltl_path_.header.stamp = ros::Time::now();
-  ltl_path_pub_.publish(ltl_path_);
 
   ROS_DEBUG("extractPose");
   result.pose.pose = vecToPose(best_branch_root_->children_[0]->state_);
-  if (best_node_->score(params_.lambda) > params_.zero_gain)
+  if (best_node_->score(ot, current_state, ltl_lambda_, ltl_max_distance_,
+                        ltl_safety_first_, params_.lambda) > params_.zero_gain)
     result.is_clear = true;
   else
   {
@@ -153,13 +156,16 @@ void AEPlanner::reevaluatePotentialInformationGainRecursive(RRTNode* node)
 void AEPlanner::expandRRT()
 {
   std::shared_ptr<octomap::OcTree> ot = ot_;
+  Eigen::Vector4d current_state = current_state_;
 
   // Expand an RRT tree and calculate information gain in every node
   ROS_DEBUG_STREAM("Entering expanding RRT");
-  for (int n = 0; (n < params_.init_iterations or
-                   (n < params_.cutoff_iterations and
-                    best_node_->score(params_.lambda) < params_.zero_gain)) and
-                  ros::ok();
+  for (int n = 0;
+       (n < params_.init_iterations or
+        (n < params_.cutoff_iterations and
+         best_node_->score(ot, current_state, ltl_lambda_, ltl_max_distance_,
+                           ltl_safety_first_, params_.lambda) < params_.zero_gain)) and
+       ros::ok();
        ++n)
   {
     ROS_DEBUG_STREAM("In expand RRT iteration: " << n);
@@ -223,7 +229,10 @@ void AEPlanner::expandRRT()
 
     ROS_DEBUG_STREAM("Update best node");
     if (!best_node_ or
-        new_node->score(params_.lambda) > best_node_->score(params_.lambda))
+        new_node->score(ot, current_state, ltl_lambda_, ltl_max_distance_,
+                        ltl_safety_first_, params_.lambda) >
+            best_node_->score(ot, current_state, ltl_lambda_, ltl_max_distance_,
+                              ltl_safety_first_, params_.lambda))
       best_node_ = new_node;
 
     ROS_DEBUG_STREAM("iteration Done!");
@@ -562,11 +571,16 @@ void AEPlanner::publishEvaluatedNodesRecursive(RRTNode* node)
 
 void AEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
 {
-  if (ltl_path_.poses.size() == 0)
-  {
-    ltl_path_.poses.push_back(msg);
-  }
-  else
+  current_state_[0] = msg.pose.position.x;
+  current_state_[1] = msg.pose.position.y;
+  current_state_[2] = msg.pose.position.z;
+  current_state_[3] = tf2::getYaw(msg.pose.orientation);
+
+  current_state_initialized_ = true;
+
+  // LTL Path
+  bool add_to_ltl_path = true;
+  if (ltl_path_.poses.size() != 0)
   {
     Eigen::Vector3d last_state(
         ltl_path_.poses[ltl_path_.poses.size() - 1].pose.position.x,
@@ -575,18 +589,21 @@ void AEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
     Eigen::Vector3d new_state(msg.pose.position.x, msg.pose.position.y,
                               msg.pose.position.z);
 
-    if ((last_state - new_state).norm() > ltl_dist_add_path_)
+    if ((last_state - new_state).norm() < ltl_dist_add_path_)
     {
-      ltl_path_.poses.push_back(msg);
+      add_to_ltl_path = false;
     }
   }
 
-  current_state_[0] = msg.pose.position.x;
-  current_state_[1] = msg.pose.position.y;
-  current_state_[2] = msg.pose.position.z;
-  current_state_[3] = tf2::getYaw(msg.pose.orientation);
+  if (add_to_ltl_path)
+  {
+    ltl_path_.poses.push_back(msg);
 
-  current_state_initialized_ = true;
+    ROS_DEBUG("Publish LTL Path");
+    ltl_path_.header.frame_id = "map";
+    ltl_path_.header.stamp = ros::Time::now();
+    ltl_path_pub_.publish(ltl_path_);
+  }
 }
 
 geometry_msgs::Pose AEPlanner::vecToPose(Eigen::Vector4d state)
