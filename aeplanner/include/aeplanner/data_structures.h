@@ -62,8 +62,8 @@ public:
     return new_node;
   }
 
-  double score(std::shared_ptr<octomap::OcTree> ot, Eigen::Vector4d current_state,
-               double ltl_lambda, double max_distance, bool safety_first, double lambda)
+  double score(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda,
+               double max_distance, bool safety_first, double lambda)
   {
     if (score_ot_ && ot == score_ot_)
     {
@@ -78,21 +78,20 @@ public:
       return score_;
     }
 
-    double closest_distance = getDistanceToClosestOccupiedBounded(ot, current_state, 10);
+    double closest_distance = getDistanceToClosestOccupiedBounded(ot, 10);
     double distance_gain = (safety_first) ? closest_distance - max_distance :
                                             max_distance - closest_distance;
     distance_gain = std::exp(-ltl_lambda * distance_gain);
 
     score_ =
-        this->parent_->score(ot, current_state, ltl_lambda, max_distance, safety_first,
-                             lambda) +
+        this->parent_->score(ot, ltl_lambda, max_distance, safety_first, lambda) +
         this->gain_ *
             exp(-lambda * (this->distance(this->parent_) * std::fmax(distance_gain, 1)));
     return score_;
   }
 
-  double cost(std::shared_ptr<octomap::OcTree> ot, Eigen::Vector4d current_state,
-              double ltl_lambda, double max_distance, bool safety_first)
+  double cost(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double max_distance,
+              bool safety_first)
   {
     if (cost_ot_ && ot == cost_ot_)
     {
@@ -107,25 +106,23 @@ public:
       return cost_;
     }
 
-    double closest_distance = getDistanceToClosestOccupiedBounded(ot, current_state, 10);
+    double closest_distance = getDistanceToClosestOccupiedBounded(ot, 10);
     double distance_gain = (safety_first) ? closest_distance - max_distance :
                                             max_distance - closest_distance;
     distance_gain = std::exp(-ltl_lambda * distance_gain);
 
-    cost_ =
-        (this->distance(this->parent_) * std::fmax(distance_gain, 1)) +
-        this->parent_->cost(ot, current_state, ltl_lambda, max_distance, safety_first);
+    cost_ = (this->distance(this->parent_) * std::fmax(distance_gain, 1)) +
+            this->parent_->cost(ot, ltl_lambda, max_distance, safety_first);
     return cost_;
   }
 
   double getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree> ot,
-                                             Eigen::Vector4d current_state,
                                              double max_distance)
   {
     // TODO: OPTIMIZE. Start from current_state and move outwards
 
     octomap::point3d distance_point(max_distance, max_distance, 0);
-    octomap::point3d oc_point(current_state[0], current_state[1], current_state[2]);
+    octomap::point3d oc_point(state_[0], state_[1], state_[2]);
 
     double min_distance = max_distance;
 

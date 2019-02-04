@@ -59,8 +59,8 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
   ROS_DEBUG("expandRRT");
   ROS_WARN_STREAM(root->gain_ << " " << root->children_.size());
   if (root->gain_ > 0.25 or !root->children_.size() or
-      root->score(ot, current_state, ltl_lambda_, ltl_max_distance_, ltl_safety_first_,
-                  params_.lambda) < params_.zero_gain)
+      root->score(ot, ltl_lambda_, ltl_max_distance_, ltl_safety_first_, params_.lambda) <
+          params_.zero_gain)
     expandRRT();
   else
     best_node_ = root->children_[0];
@@ -77,8 +77,8 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
 
   ROS_DEBUG("extractPose");
   result.pose.pose = vecToPose(best_branch_root_->children_[0]->state_);
-  if (best_node_->score(ot, current_state, ltl_lambda_, ltl_max_distance_,
-                        ltl_safety_first_, params_.lambda) > params_.zero_gain)
+  if (best_node_->score(ot, ltl_lambda_, ltl_max_distance_, ltl_safety_first_,
+                        params_.lambda) > params_.zero_gain)
     result.is_clear = true;
   else
   {
@@ -163,8 +163,8 @@ void AEPlanner::expandRRT()
   for (int n = 0;
        (n < params_.init_iterations or
         (n < params_.cutoff_iterations and
-         best_node_->score(ot, current_state, ltl_lambda_, ltl_max_distance_,
-                           ltl_safety_first_, params_.lambda) < params_.zero_gain)) and
+         best_node_->score(ot, ltl_lambda_, ltl_max_distance_, ltl_safety_first_,
+                           params_.lambda) < params_.zero_gain)) and
        ros::ok();
        ++n)
   {
@@ -228,11 +228,10 @@ void AEPlanner::expandRRT()
     // Update best node
 
     ROS_DEBUG_STREAM("Update best node");
-    if (!best_node_ or
-        new_node->score(ot, current_state, ltl_lambda_, ltl_max_distance_,
-                        ltl_safety_first_, params_.lambda) >
-            best_node_->score(ot, current_state, ltl_lambda_, ltl_max_distance_,
-                              ltl_safety_first_, params_.lambda))
+    if (!best_node_ or new_node->score(ot, ltl_lambda_, ltl_max_distance_,
+                                       ltl_safety_first_, params_.lambda) >
+                           best_node_->score(ot, ltl_lambda_, ltl_max_distance_,
+                                             ltl_safety_first_, params_.lambda))
       best_node_ = new_node;
 
     ROS_DEBUG_STREAM("iteration Done!");
@@ -278,13 +277,13 @@ RRTNode* AEPlanner::chooseParent(RRTNode* node, double l)
   RRTNode* node_nn = (RRTNode*)kd_res_item_data(nearest);
 
   RRTNode* best_node = node_nn;
-  double best_node_cost = best_node->cost(ot, current_state, ltl_lambda_,
-                                          ltl_max_distance_, ltl_safety_first_);
+  double best_node_cost =
+      best_node->cost(ot, ltl_lambda_, ltl_max_distance_, ltl_safety_first_);
   while (!kd_res_end(nearest))
   {
     node_nn = (RRTNode*)kd_res_item_data(nearest);
-    double node_cost = node_nn->cost(ot, current_state, ltl_lambda_, ltl_max_distance_,
-                                     ltl_safety_first_);
+    double node_cost =
+        node_nn->cost(ot, ltl_lambda_, ltl_max_distance_, ltl_safety_first_);
     if (best_node and node_cost < best_node_cost)
     {
       best_node = node_nn;
@@ -312,11 +311,9 @@ void AEPlanner::rewire(kdtree* kd_tree, RRTNode* new_node, double l, double r,
     node_nn = (RRTNode*)kd_res_item_data(nearest);
     Eigen::Vector3d p1(new_node->state_[0], new_node->state_[1], new_node->state_[2]);
     Eigen::Vector3d p2(node_nn->state_[0], node_nn->state_[1], node_nn->state_[2]);
-    if (node_nn->cost(ot, current_state, ltl_lambda_, ltl_max_distance_,
-                      ltl_safety_first_) > new_node->cost(ot, current_state, ltl_lambda_,
-                                                          ltl_max_distance_,
-                                                          ltl_safety_first_) +
-                                               (p1 - p2).norm())
+    if (node_nn->cost(ot, ltl_lambda_, ltl_max_distance_, ltl_safety_first_) >
+        new_node->cost(ot, ltl_lambda_, ltl_max_distance_, ltl_safety_first_) +
+            (p1 - p2).norm())
     {
       if (!collisionLine(new_node->state_, node_nn->state_, r))
         node_nn->parent_ = new_node;

@@ -34,8 +34,12 @@ int main(int argc, char** argv)
                                                               "setpoint_position/"
                                                               "local",
                                                               1000));
-  ros::ServiceClient coverage_srv =
-      nh.serviceClient<aeplanner_evaluation::Coverage>("/get_coverage");
+  ros::ServiceClient coverage_srv = nh.serviceClient<aeplanner_evaluation::Coverage>("/ge"
+                                                                                     "t_"
+                                                                                     "cov"
+                                                                                     "era"
+                                                                                     "g"
+                                                                                     "e");
 
   // wait for fly_to server to start
   // ROS_INFO("Waiting for fly_to action server");
@@ -45,8 +49,7 @@ int main(int argc, char** argv)
 
   // wait for aep server to start
   ROS_INFO("Waiting for aeplanner action server");
-  actionlib::SimpleActionClient<aeplanner::aeplannerAction> aep_ac("make_plan",
-                                                                   true);
+  actionlib::SimpleActionClient<aeplanner::aeplannerAction> aep_ac("make_plan", true);
   aep_ac.waitForServer();  // will wait for infinite time
   ROS_INFO("aeplanner action server started!");
 
@@ -65,9 +68,8 @@ int main(int argc, char** argv)
   double initial_positions[8][4] = {
     { init_pose->pose.position.x, init_pose->pose.position.y,
       init_pose->pose.position.z + 2.0, init_yaw },
-    { init_pose->pose.position.x + 1.0 * std::cos(init_yaw),
-      init_pose->pose.position.y + 1.0 * std::sin(init_yaw),
-      init_pose->pose.position.z + 2.0, init_yaw },
+    { init_pose->pose.position.x, init_pose->pose.position.y,
+      init_pose->pose.position.z + 2.0, init_yaw + M_PI },
   };
 
   // This is the initialization motion, necessary that the known free space
@@ -81,8 +83,7 @@ int main(int argc, char** argv)
     goal.pose.pose.position.x = initial_positions[i][0];
     goal.pose.pose.position.y = initial_positions[i][1];
     goal.pose.pose.position.z = initial_positions[i][2];
-    goal.pose.pose.orientation =
-        tf::createQuaternionMsgFromYaw(initial_positions[i][3]);
+    goal.pose.pose.orientation = tf::createQuaternionMsgFromYaw(initial_positions[i][3]);
     last_pose.pose = goal.pose.pose;
 
     ROS_INFO_STREAM("Sending initial goal...");
@@ -120,8 +121,8 @@ int main(int argc, char** argv)
       ros::Time s = ros::Time::now();
       geometry_msgs::PoseStamped goal_pose = aep_ac.getResult()->pose;
       // Write path to file
-      pathfile << goal_pose.pose.position.x << ", " << goal_pose.pose.position.y
-               << ", " << goal_pose.pose.position.z << ", n" << std::endl;
+      pathfile << goal_pose.pose.position.x << ", " << goal_pose.pose.position.y << ", "
+               << goal_pose.pose.position.z << ", n" << std::endl;
 
       last_pose.pose = goal_pose.pose;
       rpl_exploration::FlyToGoal goal;
@@ -200,8 +201,8 @@ int main(int argc, char** argv)
     logfile << iteration << ", " << elapsed << ", "
             << aep_ac.getResult()->sampling_time.data << ", "
             << aep_ac.getResult()->planning_time.data << ", "
-            << aep_ac.getResult()->collision_check_time.data << ", " << fly_time
-            << ", " << srv.response.coverage << ", " << srv.response.free << ", "
+            << aep_ac.getResult()->collision_check_time.data << ", " << fly_time << ", "
+            << srv.response.coverage << ", " << srv.response.free << ", "
             << srv.response.occupied << ", " << srv.response.unmapped << ", "
             << aep_ac.getResult()->tree_size << std::endl;
 

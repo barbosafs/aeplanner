@@ -96,9 +96,7 @@ visualization_msgs::Marker createEdgeMarker(RRTNode* node, int id, std::string f
   a.scale.x = dir.norm();
   a.scale.y = 0.03;
   a.scale.z = 0.03;
-  a.color.r =
-      node->score(ot, current_state, ltl_lambda, max_distance, safety_first, lambda) /
-      60.0;
+  a.color.r = node->score(ot, ltl_lambda, max_distance, safety_first, lambda) / 60.0;
   a.color.g = 0.0;
   a.color.b = 1.0;
   a.color.a = 1.0;
