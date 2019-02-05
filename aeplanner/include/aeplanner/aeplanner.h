@@ -80,6 +80,8 @@ private:
   nav_msgs::Path ltl_path_;
   double ltl_dist_add_path_;
   ros::Publisher ltl_path_pub_;
+  ros::Publisher ltl_stats_pub_;
+  std::vector<double> ltl_closest_distance_;
   double ltl_max_search_distance_;
   std::vector<std::pair<octomap::point3d, double>> ltl_search_distances_;
 
@@ -119,6 +121,7 @@ private:
 
   // LTL
   void createLTLSearchDistance();
+  double getDistanceToClosestOccupiedBounded();
   void configCallback(aeplanner::LTLConfig& config, uint32_t level);
 
 public:

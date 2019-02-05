@@ -24,7 +24,9 @@ find_package(octomap REQUIRED)
 
 add_message_files(
   DIRECTORY msg 
-  FILES Node.msg
+  FILES
+  Node.msg
+  LTLStats.msg
 )
 add_action_files(
   DIRECTORY action 
