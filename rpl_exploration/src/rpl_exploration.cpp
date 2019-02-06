@@ -62,20 +62,36 @@ int main(int argc, char** argv)
   ROS_INFO("rrt Action server started!");
 
   // Get current pose
-  geometry_msgs::PoseStamped::ConstPtr init_pose = ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/mavros/"
-                                                                                                          "local_"
-                                                                                                          "position/"
-                                                                                                          "pose");
+  geometry_msgs::PoseStamped::ConstPtr init_pose =
+      ros::topic::waitForMessage<geometry_msgs::PoseStamped>("/mavros/"
+                                                             "local_"
+                                                             "position/"
+                                                             "pose");
   double init_yaw = tf2::getYaw(init_pose->pose.orientation);
   // Up 2 meters and then forward one meter
   std::vector<Eigen::Vector4d> initial_positions;
-  initial_positions.emplace_back(init_pose->pose.position.x, init_pose->pose.position.y, 0.0, init_yaw);
-  initial_positions.emplace_back(init_pose->pose.position.x, init_pose->pose.position.y, 0.5, init_yaw);
+  initial_positions.emplace_back(init_pose->pose.position.x, init_pose->pose.position.y,
+                                 0.0, init_yaw);
+  initial_positions.emplace_back(init_pose->pose.position.x, init_pose->pose.position.y,
+                                 0.5, init_yaw);
   double move_forward_distance = 0.0;
   double yaw_radians = M_PI;
-  initial_positions.emplace_back(init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
-                                 init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
-                                 init_yaw + yaw_radians);
+  initial_positions.emplace_back(
+      init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
+      init_yaw + (yaw_radians / 2));
+  initial_positions.emplace_back(
+      init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
+      init_yaw + yaw_radians);
+  initial_positions.emplace_back(
+      init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
+      init_yaw - (yaw_radians / 2));
+  initial_positions.emplace_back(
+      init_pose->pose.position.x + move_forward_distance * std::cos(init_yaw),
+      init_pose->pose.position.y + move_forward_distance * std::sin(init_yaw), 0.5,
+      init_yaw);
 
   // This is the initialization motion, necessary that the known free space
   // allows the planning of initial paths.
@@ -93,7 +109,8 @@ int main(int argc, char** argv)
     goal.yaw_converged = 0.1 * M_PI;
     last_pose.pose = goal.pose.pose;
 
-    ROS_INFO("Sending initial goal %d out of %d...", (i + 1), (int)initial_positions.size());
+    ROS_INFO("Sending initial goal %d out of %d...", (i + 1),
+             (int)initial_positions.size());
     ac.sendGoal(goal);
 
     ac.waitForResult(ros::Duration(0));
@@ -128,8 +145,8 @@ int main(int argc, char** argv)
       ros::Time s = ros::Time::now();
       geometry_msgs::PoseStamped goal_pose = aep_ac.getResult()->pose;
       // Write path to file
-      pathfile << goal_pose.pose.position.x << ", " << goal_pose.pose.position.y << ", " << goal_pose.pose.position.z
-               << ", n" << std::endl;
+      pathfile << goal_pose.pose.position.x << ", " << goal_pose.pose.position.y << ", "
+               << goal_pose.pose.position.z << ", n" << std::endl;
 
       last_pose.pose = goal_pose.pose;
       rpl_exploration::FlyToGoal goal;
@@ -153,7 +170,8 @@ int main(int argc, char** argv)
         ROS_WARN("Exploration complete!");
         break;
       }
-      for (auto it = aep_ac.getResult()->frontiers.poses.begin(); it != aep_ac.getResult()->frontiers.poses.end(); ++it)
+      for (auto it = aep_ac.getResult()->frontiers.poses.begin();
+           it != aep_ac.getResult()->frontiers.poses.end(); ++it)
       {
         rrt_goal.goal_poses.poses.push_back(*it);
       }
@@ -170,8 +188,8 @@ int main(int argc, char** argv)
       {
         geometry_msgs::Pose goal_pose = path.poses[i].pose;
         // Write path to file
-        pathfile << goal_pose.position.x << ", " << goal_pose.position.y << ", " << goal_pose.position.z << ", f"
-                 << std::endl;
+        pathfile << goal_pose.position.x << ", " << goal_pose.position.y << ", "
+                 << goal_pose.position.z << ", f" << std::endl;
 
         last_pose.pose = goal_pose;
         rpl_exploration::FlyToGoal goal;
@@ -194,22 +212,27 @@ int main(int argc, char** argv)
       ROS_ERROR("Failed to call coverage service");
     }
 
-    ROS_INFO_STREAM("Iteration: " << iteration << "  "
-                                  << "Time: " << elapsed << "  "
-                                  << "Sampling: " << aep_ac.getResult()->sampling_time.data << "  "
-                                  << "Planning: " << aep_ac.getResult()->planning_time.data << "  "
-                                  << "Collision check: " << aep_ac.getResult()->collision_check_time.data << "  "
-                                  << "Flying: " << fly_time << " "
-                                  << "Tree size: " << aep_ac.getResult()->tree_size << " "
-                                  << "Coverage: " << srv.response.coverage << " "
-                                  << "F:     " << srv.response.free << " "
-                                  << "O: " << srv.response.occupied << " "
-                                  << "U: " << srv.response.unmapped);
+    ROS_INFO_STREAM("Iteration: "
+                    << iteration << "  "
+                    << "Time: " << elapsed << "  "
+                    << "Sampling: " << aep_ac.getResult()->sampling_time.data << "  "
+                    << "Planning: " << aep_ac.getResult()->planning_time.data << "  "
+                    << "Collision check: "
+                    << aep_ac.getResult()->collision_check_time.data << "  "
+                    << "Flying: " << fly_time << " "
+                    << "Tree size: " << aep_ac.getResult()->tree_size << " "
+                    << "Coverage: " << srv.response.coverage << " "
+                    << "F:     " << srv.response.free << " "
+                    << "O: " << srv.response.occupied << " "
+                    << "U: " << srv.response.unmapped);
 
-    logfile << iteration << ", " << elapsed << ", " << aep_ac.getResult()->sampling_time.data << ", "
-            << aep_ac.getResult()->planning_time.data << ", " << aep_ac.getResult()->collision_check_time.data << ", "
-            << fly_time << ", " << srv.response.coverage << ", " << srv.response.free << ", " << srv.response.occupied
-            << ", " << srv.response.unmapped << ", " << aep_ac.getResult()->tree_size << std::endl;
+    logfile << iteration << ", " << elapsed << ", "
+            << aep_ac.getResult()->sampling_time.data << ", "
+            << aep_ac.getResult()->planning_time.data << ", "
+            << aep_ac.getResult()->collision_check_time.data << ", " << fly_time << ", "
+            << srv.response.coverage << ", " << srv.response.free << ", "
+            << srv.response.occupied << ", " << srv.response.unmapped << ", "
+            << aep_ac.getResult()->tree_size << std::endl;
 
     iteration++;
   }
