@@ -6,12 +6,14 @@
 
 namespace pig
 {
-void sqExpKernel(std::vector<Eigen::Vector3d> x1, std::vector<Eigen::Vector3d> x2,
-                 std::tuple<double, double, double> hyper_params);
+Eigen::MatrixXd sqExpKernel(const Eigen::Matrix<double, Eigen::Dynamic, 3>& x1,
+                            const Eigen::Matrix<double, Eigen::Dynamic, 3>& x2,
+                            double hyp_l, double hyp_sigma_f, double hyp_sigma_n);
 
-std::pair<double, double> gp(std::vector<double> y, std::vector<Eigen::Vector3d> x,
-                             std::vector<Eigen::Vector3d> x_star,
-                             std::tuple<double, double, double> hyper_params);
+std::pair<double, double> gp(const Eigen::VectorXd& y,
+                             const Eigen::Matrix<double, Eigen::Dynamic, 3>& x,
+                             const Eigen::Matrix<double, Eigen::Dynamic, 3>& x_star,
+                             double hyp_l, double hyp_sigma_f, double hyp_sigma_n);
 }  // namespace pig
 
 #endif  // PIGAIN_GP_H
