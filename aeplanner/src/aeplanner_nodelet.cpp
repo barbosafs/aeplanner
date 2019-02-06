@@ -9,7 +9,7 @@ void AEPlannerNodelet::onInit()
 {
   NODELET_DEBUG("Initializing nodelet AEPlanner...");
 
-  ros::NodeHandle& nh = getMTNodeHandle();  // getNodeHandle();
+  ros::NodeHandle& nh = getNodeHandle();  // getMTNodeHandle();
   aeplanner_ = new AEPlanner(nh);
 }
 AEPlannerNodelet::~AEPlannerNodelet()

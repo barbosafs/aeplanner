@@ -71,22 +71,26 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
       root->score(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
                   ltl_min_distance_active_, ltl_max_distance_active_,
                   ltl_search_distances_, params_.lambda) < params_.zero_gain)
+  {
     expandRRT();
+  }
   else
+  {
     best_node_ = root->children_[0];
+  }
 
-  ROS_DEBUG("getCopyOfParent");
+  ROS_WARN("getCopyOfParent");
   best_branch_root_ = best_node_->getCopyOfParentBranch();
 
-  ROS_DEBUG("createRRTMarker");
+  ROS_WARN("createRRTMarker");
   rrt_marker_pub_.publish(createRRTMarkerArray(
       root, ot, current_state, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
       ltl_min_distance_active_, ltl_max_distance_active_, ltl_search_distances_,
       params_.lambda));
-  ROS_DEBUG("publishRecursive");
+  ROS_WARN("publishRecursive");
   publishEvaluatedNodesRecursive(root);
 
-  ROS_DEBUG("extractPose");
+  ROS_WARN("extractPose");
   result.pose.pose = vecToPose(best_branch_root_->children_[0]->state_);
   if (best_node_->score(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
                         ltl_min_distance_active_, ltl_max_distance_active_,
@@ -101,10 +105,10 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
   }
   as_.setSucceeded(result);
 
-  ROS_DEBUG("Deleting/Freeing!");
+  ROS_WARN("Deleting/Freeing!");
   delete root;
   kd_free(kd_tree_);
-  ROS_DEBUG("Done!");
+  ROS_WARN("Done!");
   ROS_ERROR_STREAM("Execute done!");
 }
 
@@ -630,7 +634,7 @@ void AEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
     ltl_stats.ltl_min_distance = (ltl_min_distance_active_) ? ltl_min_distance_ : -1;
     ltl_stats.ltl_max_distance = (ltl_max_distance_active_) ? ltl_max_distance_ : -1;
 
-    double closest_distance = getDistanceToClosestOccupiedBounded();
+    double closest_distance = getDistanceToClosestOccupiedBounded(ot_, current_state_);
     if (closest_distance == 10000000)
     {
       return;
@@ -638,12 +642,10 @@ void AEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
 
     ltl_stats.current_closest_distance = closest_distance;
 
-    ROS_ERROR("Calculating mean\n");
     ltl_closest_distance_.push_back(closest_distance);
     ltl_stats.mean_closest_distance =
         std::accumulate(ltl_closest_distance_.begin(), ltl_closest_distance_.end(), 0.0) /
         ltl_closest_distance_.size();
-    ROS_ERROR("Done calculating mean\n");
 
     ltl_stats_pub_.publish(ltl_stats);
   }
@@ -784,11 +786,9 @@ void AEPlanner::createLTLSearchDistance()
             compareByDistance);
 }
 
-double AEPlanner::getDistanceToClosestOccupiedBounded()
+double AEPlanner::getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree> ot,
+                                                      Eigen::Vector4d current_state)
 {
-  std::shared_ptr<octomap::OcTree> ot = ot_;
-  Eigen::Vector4d current_state = current_state_;
-
   octomap::point3d state(current_state[0], current_state[1], current_state[2]);
 
   for (std::pair<octomap::point3d, double> point : ltl_search_distances_)

@@ -121,7 +121,8 @@ private:
 
   // LTL
   void createLTLSearchDistance();
-  double getDistanceToClosestOccupiedBounded();
+  double getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree> ot,
+                                             Eigen::Vector4d current_state);
   void configCallback(aeplanner::LTLConfig& config, uint32_t level);
 
 public:
