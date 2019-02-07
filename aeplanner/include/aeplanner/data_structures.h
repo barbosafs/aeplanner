@@ -99,7 +99,7 @@ public:
                const std::vector<std::pair<octomap::point3d, double>>& search_distances,
                double lambda)
   {
-    if (score_ot_ && ot == score_ot_ && parent_ == score_parent_)
+    if (score_ot_ && *ot == *score_ot_ && parent_ == score_parent_)
     {
       return score_;
     }
@@ -130,7 +130,7 @@ public:
               double max_distance, bool min_distance_active, bool max_distance_active,
               const std::vector<std::pair<octomap::point3d, double>>& search_distances)
   {
-    if (cost_ot_ && ot == cost_ot_ && parent_ == cost_parent_)
+    if (cost_ot_ && *ot == *cost_ot_ && parent_ == cost_parent_)
     {
       return cost_;
     }

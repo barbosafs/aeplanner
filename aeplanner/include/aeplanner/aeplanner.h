@@ -85,6 +85,8 @@ private:
   double ltl_max_search_distance_;
   std::vector<std::pair<octomap::point3d, double>> ltl_search_distances_;
 
+  double max_sampling_radius_squared_;
+
   // Service server callback
   bool reevaluate(aeplanner::Reevaluate::Request& req,
                   aeplanner::Reevaluate::Response& res);

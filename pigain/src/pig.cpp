@@ -193,9 +193,8 @@ void PIG::evaluateCallback(const ros::TimerEvent& event)
   {
     mean_markers.markers.push_back(pointToMarker(
         i, x_star.row(i), gp_response.first, std::max(1.0 - gp_response.second, 0.0)));
-
-    // sigma_markers.markers.push_back(
-    //     pointToMarker(i, x_star.row(i), gp_response.second * 2))
+    sigma_markers.markers.push_back(
+        pointToMarker(i, x_star.row(i), gp_response.second * 2));
   }
 
   mean_pub_.publish(mean_markers);
@@ -261,7 +260,8 @@ void PIG::rvizCallback(const ros::TimerEvent& event)
 
   box query_box(bbx_min_, bbx_max_);
   std::vector<value> hits;
-  rtree_.query(boost::geometry::index::intersects(query_box), std::back_inserter(hits));
+  boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>> rtree = rtree_;
+  rtree.query(boost::geometry::index::intersects(query_box), std::back_inserter(hits));
 
   for (value item : hits)
   {

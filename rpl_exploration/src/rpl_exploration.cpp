@@ -151,8 +151,8 @@ int main(int argc, char** argv)
       last_pose.pose = goal_pose.pose;
       rpl_exploration::FlyToGoal goal;
       goal.pose = goal_pose;
-      goal.distance_converged = 0.5;
-      goal.yaw_converged = 0.5 * M_PI;
+      goal.distance_converged = 0.8;
+      goal.yaw_converged = 0.8 * M_PI;
       ac.sendGoal(goal);
 
       ac.waitForResult(ros::Duration(0));
@@ -194,8 +194,8 @@ int main(int argc, char** argv)
         last_pose.pose = goal_pose;
         rpl_exploration::FlyToGoal goal;
         goal.pose.pose = goal_pose;
-        goal.distance_converged = 0.5;
-        goal.yaw_converged = 0.5 * M_PI;
+        goal.distance_converged = 0.8;
+        goal.yaw_converged = 0.8 * M_PI;
         ac.sendGoal(goal);
 
         ac.waitForResult(ros::Duration(0));

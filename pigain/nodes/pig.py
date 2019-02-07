@@ -52,6 +52,7 @@ class PIGain:
         except KeyError:
             rospy.logwarn("Range max parameter not specified")
             rospy.logwarn("Defaulting to 8 m...")
+            self.range = 8
 
         self.bbx = (self.min[0], self.min[1], self.min[2], self.max[0], self.max[1], self.max[2])
 
@@ -239,7 +240,7 @@ class PIGain:
         marker.pose.position.x = node.position.x
         marker.pose.position.y = node.position.y
         marker.pose.position.z = node.position.z
-        marker.lifetime = rospy.Time(1.2)
+        marker.lifetime = rospy.Time(5)
 
         return marker
 

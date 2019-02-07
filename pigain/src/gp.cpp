@@ -2,6 +2,8 @@
 
 #include <eigen3/Eigen/Cholesky>
 
+#include <omp.h>
+
 namespace pig
 {
 Eigen::MatrixXd sqExpKernel(const Eigen::Matrix<double, Eigen::Dynamic, 3>& x1,
@@ -12,6 +14,7 @@ Eigen::MatrixXd sqExpKernel(const Eigen::Matrix<double, Eigen::Dynamic, 3>& x1,
   size_t n2 = x2.rows();
   Eigen::MatrixXd k(n1, n2);
 
+  // #pragma omp parallel for
   for (size_t i = 0; i < n2; ++i)
   {
     Eigen::Matrix<double, Eigen::Dynamic, 3> temp = x1 - x2.row(i);

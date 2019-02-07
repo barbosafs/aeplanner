@@ -29,6 +29,8 @@ AEPlanner::AEPlanner(const ros::NodeHandle& nh)
   ltl_cs_.setCallback(ltl_f_);
 
   params_ = readParams();
+  max_sampling_radius_squared_ = pow(params_.max_sampling_radius, 2.0);
+
   as_.start();
 
   // Initialize kd-tree
@@ -63,9 +65,9 @@ void AEPlanner::execute(const aeplanner::aeplannerGoalConstPtr& goal)
     createLTLSearchDistance();
   }
 
-  ROS_DEBUG("Init");
+  ROS_WARN("Init");
   RRTNode* root = initialize();
-  ROS_DEBUG("expandRRT");
+  ROS_WARN("expandRRT");
   ROS_WARN_STREAM(root->gain_ << " " << root->children_.size());
   if (root->gain_ > 0.25 or !root->children_.size() or
       root->score(ot, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
@@ -159,14 +161,14 @@ void AEPlanner::initializeKDTreeWithPreviousBestBranch(RRTNode* root)
 
 void AEPlanner::reevaluatePotentialInformationGainRecursive(RRTNode* node)
 {
-  ROS_WARN_STREAM("Reevaluating!!");
+  ROS_DEBUG_STREAM("Reevaluating!!");
   std::pair<double, double> ret = gainCubature(node->state_);
   node->state_[3] = ret.second;  // Assign yaw angle that maximizes g
   node->gain_ = ret.first;
   for (typename std::vector<RRTNode*>::iterator node_it = node->children_.begin();
        node_it != node->children_.end(); ++node_it)
     reevaluatePotentialInformationGainRecursive(*node_it);
-  ROS_WARN_STREAM("Reevaluating done!!");
+  ROS_DEBUG_STREAM("Reevaluating done!!");
 }
 
 void AEPlanner::expandRRT()
@@ -216,10 +218,11 @@ void AEPlanner::expandRRT()
         continue;
       ROS_DEBUG_STREAM("ot check done!");
 
-      ROS_DEBUG_STREAM("Inside boundaries?  " << isInsideBoundaries(new_node->state_));
-      ROS_DEBUG_STREAM("In known space?     " << ot_result);
-      ROS_DEBUG_STREAM("Collision?          " << collisionLine(
-                           nearest->state_, new_node->state_, params_.bounding_radius));
+      // ROS_DEBUG_STREAM("Inside boundaries?  " << isInsideBoundaries(new_node->state_));
+      // ROS_DEBUG_STREAM("In known space?     " << ot_result);
+      // ROS_DEBUG_STREAM("Collision?          " << collisionLine(
+      //                      nearest->state_, new_node->state_,
+      //                      params_.bounding_radius));
     } while (!isInsideBoundaries(new_node->state_) or !ot_result or
              collisionLine(nearest->state_, new_node->state_, params_.bounding_radius));
 
@@ -264,15 +267,13 @@ Eigen::Vector4d AEPlanner::sampleNewPoint()
 {
   // Samples one point uniformly over a sphere with a radius of
   // param_.max_sampling_radius
-  double radius = 10;
-  Eigen::Vector4d point;
+  Eigen::Vector4d point(0.0, 0.0, 0.0, 0.0);
   do
   {
     for (int i = 0; i < 3; i++)
       point[i] = params_.max_sampling_radius * 2.0 *
                  (((double)rand()) / ((double)RAND_MAX) - 0.5);
-  } while (pow(point[0], 2.0) + pow(point[1], 2.0) + pow(point[2], 2.0) >
-           pow(params_.max_sampling_radius, 2.0));
+  } while (point.squaredNorm() > max_sampling_radius_squared_);
 
   return point;
 }
@@ -423,7 +424,6 @@ std::pair<double, double> AEPlanner::gainCubature(Eigen::Vector4d state)
   Eigen::Vector3d origin(state[0], state[1], state[2]);
   Eigen::Vector3d vec, dir;
 
-  int id = 0;
   for (theta = -180; theta < 180; theta += dtheta)
   {
     theta_rad = M_PI * theta / 180.0f;
@@ -581,6 +581,7 @@ void AEPlanner::publishEvaluatedNodesRecursive(RRTNode* node)
     {
       pigain::Node pig_node;
       pig_node.gain = (*node_it)->gain_;
+      ROS_ERROR_STREAM("GAIN: " << pig_node.gain);
       pig_node.position.x = (*node_it)->state_[0];
       pig_node.position.y = (*node_it)->state_[1];
       pig_node.position.z = (*node_it)->state_[2];
