@@ -101,6 +101,8 @@ private:
 
   Eigen::Vector4d sampleNewPoint();
   bool isInsideBoundaries(Eigen::Vector4d point);
+  bool isInsideBoundaries(Eigen::Vector3d point);
+  bool isInsideBoundaries(octomap::point3d point);
   bool collisionLine(Eigen::Vector4d p1, Eigen::Vector4d p2, double r);
   RRTNode* chooseParent(RRTNode* node, double l);
   void rewire(kdtree* kd_tree, RRTNode* new_node, double l, double r, double r_os);
@@ -122,9 +124,9 @@ private:
   geometry_msgs::PoseArray getFrontiers();
 
   // LTL
-  void createLTLSearchDistance();
-  double getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree> ot,
-                                             Eigen::Vector4d current_state);
+  // void createLTLSearchDistance();
+  // double getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree> ot,
+  //                                            Eigen::Vector4d current_state);
   void configCallback(aeplanner::LTLConfig& config, uint32_t level);
 
 public:

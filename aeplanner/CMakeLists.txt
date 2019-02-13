@@ -22,6 +22,13 @@ find_package(cmake_modules REQUIRED)
 find_package(Eigen3 REQUIRED)
 find_package(octomap REQUIRED)
 
+find_package(OpenMP REQUIRED)
+if(OPENMP_FOUND)
+  message(STATUS "OPENMP FOUND")
+  set(OpenMP_FLAGS ${OpenMP_CXX_FLAGS})  # or if you use C: ${OpenMP_C_FLAGS}
+  set(OpenMP_LIBS gomp)
+endif()
+
 add_message_files(
   DIRECTORY msg 
   FILES
@@ -52,7 +59,7 @@ generate_dynamic_reconfigure_options(
 
 catkin_package(
   INCLUDE_DIRS include ${Eigen_INCLUDE_DIRS} ${OCTOMAP_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS}
-  LIBRARIES aeplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES}
+  LIBRARIES aeplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${OpenMP_LIBS}
   CATKIN_DEPENDS message_runtime roscpp geometry_msgs visualization_msgs tf kdtree
 )
 
@@ -64,9 +71,11 @@ include_directories(
 )
 
 add_library(aeplanner src/aeplanner_nodelet.cpp src/aeplanner.cpp src/aeplanner_viz.cpp src/param.cpp)
+target_compile_options(aeplanner PRIVATE ${OpenMP_FLAGS})
 target_link_libraries(aeplanner
   ${catkin_LIBRARIES}
   ${OCTOMAP_LIBRARIES}
+  ${OpenMP_LIBS}
 )
 add_dependencies(aeplanner
   ${catkin_EXPORTED_TARGETS} 
@@ -76,9 +85,11 @@ add_dependencies(aeplanner
 )
 
 add_executable(aeplanner_node src/aeplanner_node.cpp src/aeplanner.cpp src/aeplanner_viz.cpp src/param.cpp)
+target_compile_options(aeplanner_node PRIVATE ${OpenMP_FLAGS})
 target_link_libraries(aeplanner_node
   ${catkin_LIBRARIES}
   ${OCTOMAP_LIBRARIES}
+  ${OpenMP_LIBS}
 )
 add_dependencies(aeplanner_node
   ${catkin_EXPORTED_TARGETS} 
