@@ -84,6 +84,8 @@ private:
   std::vector<double> ltl_closest_distance_;
   double ltl_max_search_distance_;
   std::vector<std::pair<octomap::point3d, double>> ltl_search_distances_;
+  int ltl_min_depth_;
+  int ltl_max_depth_;
 
   double max_sampling_radius_squared_;
 
