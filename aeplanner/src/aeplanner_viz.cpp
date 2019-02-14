@@ -5,13 +5,14 @@ namespace aeplanner
 visualization_msgs::MarkerArray createRRTMarkerArray(
     RRTNode* root, std::shared_ptr<octomap::OcTree> ot, Eigen::Vector4d current_state,
     double ltl_lambda, double min_distance, double max_distance, bool min_distance_active,
-    bool max_distance_active, double max_search_distance, double radius, double lambda)
+    bool max_distance_active, double max_search_distance, double radius, int min_depth,
+    int max_depth, double lambda)
 {
   int id = 0;
   visualization_msgs::MarkerArray marker_array;
   recurse(root, &marker_array, &id, ot, current_state, ltl_lambda, min_distance,
           max_distance, min_distance_active, max_distance_active, max_search_distance,
-          radius, lambda);
+          radius, min_depth, max_depth, lambda);
 
   return marker_array;
 }
@@ -19,7 +20,8 @@ void recurse(RRTNode* node, visualization_msgs::MarkerArray* marker_array, int* 
              std::shared_ptr<octomap::OcTree> ot, Eigen::Vector4d current_state,
              double ltl_lambda, double min_distance, double max_distance,
              bool min_distance_active, bool max_distance_active,
-             double max_search_distance, double radius, double lambda)
+             double max_search_distance, double radius, int min_depth, int max_depth,
+             double lambda)
 {
   for (std::vector<RRTNode*>::iterator child_it = node->children_.begin();
        child_it != node->children_.end(); ++child_it)
@@ -28,10 +30,11 @@ void recurse(RRTNode* node, visualization_msgs::MarkerArray* marker_array, int* 
     if (child)
       recurse(child, marker_array, id, ot, current_state, ltl_lambda, min_distance,
               max_distance, min_distance_active, max_distance_active, max_search_distance,
-              radius, lambda);
-    marker_array->markers.push_back(createEdgeMarker(
-        child, (*id), "map", ot, current_state, ltl_lambda, min_distance, max_distance,
-        min_distance_active, max_distance_active, max_search_distance, radius, lambda));
+              radius, min_depth, max_depth, lambda);
+    marker_array->markers.push_back(
+        createEdgeMarker(child, (*id), "map", ot, current_state, ltl_lambda, min_distance,
+                         max_distance, min_distance_active, max_distance_active,
+                         max_search_distance, radius, min_depth, max_depth, lambda));
     marker_array->markers.push_back(createNodeMarker(child, (*id)++, "map"));
   }
 
@@ -70,11 +73,14 @@ visualization_msgs::Marker createNodeMarker(RRTNode* node, int id, std::string f
   return a;
 }
 
-visualization_msgs::Marker createEdgeMarker(
-    RRTNode* node, int id, std::string frame_id, std::shared_ptr<octomap::OcTree> ot,
-    Eigen::Vector4d current_state, double ltl_lambda, double min_distance,
-    double max_distance, bool min_distance_active, bool max_distance_active,
-    double max_search_distance, double radius, double lambda)
+visualization_msgs::Marker createEdgeMarker(RRTNode* node, int id, std::string frame_id,
+                                            std::shared_ptr<octomap::OcTree> ot,
+                                            Eigen::Vector4d current_state,
+                                            double ltl_lambda, double min_distance,
+                                            double max_distance, bool min_distance_active,
+                                            bool max_distance_active,
+                                            double max_search_distance, double radius,
+                                            int min_depth, int max_depth, double lambda)
 {
   visualization_msgs::Marker a;
   a.header.stamp = ros::Time::now();
@@ -102,7 +108,8 @@ visualization_msgs::Marker createEdgeMarker(
   a.scale.y = 0.03;
   a.scale.z = 0.03;
   a.color.r = node->score(ot, ltl_lambda, min_distance, max_distance, min_distance_active,
-                          max_distance_active, max_search_distance, radius, lambda) /
+                          max_distance_active, max_search_distance, radius, min_depth,
+                          max_depth, lambda) /
               60.0;
   a.color.g = 0.0;
   a.color.b = 1.0;
