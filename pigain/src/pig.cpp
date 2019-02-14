@@ -1,8 +1,8 @@
-#include <ros/ros.h>
-#include <pigain/pig.h>
 #include <pigain/gp.h>
+#include <pigain/pig.h>
+#include <ros/ros.h>
 
-#include <aeplanner/Reevaluate.h>
+#include <aeplanner_msgs/Reevaluate.h>
 
 namespace pig
 {
@@ -10,15 +10,14 @@ PIG::PIG(ros::NodeHandle& nh)
   : nh_(nh)
   , gp_srv_(nh_.advertiseService("gp_query_server", &PIG::gpQueryCallback, this))
   , best_node_srv_(nh_.advertiseService("best_node_server", &PIG::bestNodeCallback, this))
-  , reevaluate_client_(nh_.serviceClient<aeplanner::Reevaluate>("reevaluate"))
+  , reevaluate_client_(nh_.serviceClient<aeplanner_msgs::Reevaluate>("reevaluate"))
   , gain_sub_(nh_.subscribe("gain_node", 10, &PIG::gainCallback, this))
   , pose_sub_(nh_.subscribe("pose", 10, &PIG::poseCallback, this))
   , marker_pub_(nh_.advertise<visualization_msgs::MarkerArray>("pig_markers", 10, true))
   , mean_pub_(nh_.advertise<visualization_msgs::MarkerArray>("mean_markers", 10, true))
   , sigma_pub_(nh_.advertise<visualization_msgs::MarkerArray>("sigma_markers", 10, true))
   , marker_pub_timer_(nh_.createTimer(ros::Duration(1), &PIG::rvizCallback, this))
-  , mean_and_sigma_pub_timer_(
-        nh.createTimer(ros::Duration(5), &PIG::evaluateCallback, this))
+  , mean_and_sigma_pub_timer_(nh.createTimer(ros::Duration(5), &PIG::evaluateCallback, this))
   , reevaluate_timer_(nh_.createTimer(ros::Duration(10), &PIG::reevaluateCallback, this))
   , pose_recieved_(false)
 {
@@ -55,15 +54,14 @@ PIG::PIG(ros::NodeHandle& nh)
   bbx_max_ = point(max[0], max[1], max[2]);
 }
 
-bool PIG::gpQueryCallback(pigain::Query::Request& req, pigain::Query::Response& res)
+bool PIG::gpQueryCallback(aeplanner_msgs::Query::Request& req, aeplanner_msgs::Query::Response& res)
 {
   box query_box(point(req.point.x - 2, req.point.y - 2, req.point.z - 2),
                 point(req.point.x + 2, req.point.y + 2, req.point.z + 2));
   std::vector<value> hits;
   rtree_.query(boost::geometry::index::intersects(query_box), std::back_inserter(hits));
   std::vector<value> nearest;
-  rtree_.query(boost::geometry::index::nearest(query_box, 1),
-               std::back_inserter(nearest));
+  rtree_.query(boost::geometry::index::nearest(query_box, 1), std::back_inserter(nearest));
 
   Eigen::VectorXd y(hits.size());
   Eigen::Matrix<double, Eigen::Dynamic, 3> x(hits.size(), 3);
@@ -95,8 +93,7 @@ bool PIG::gpQueryCallback(pigain::Query::Request& req, pigain::Query::Response& 
   x_star(0, 1) = req.point.y;
   x_star(0, 2) = req.point.z;
 
-  std::pair<double, double> gp_response =
-      gp(y, x, x_star, hyper_l_, hyper_sigma_f_, hyper_sigma_n_);
+  std::pair<double, double> gp_response = gp(y, x, x_star, hyper_l_, hyper_sigma_f_, hyper_sigma_n_);
 
   res.mu = gp_response.first;
   res.sigma = gp_response.second;
@@ -105,8 +102,7 @@ bool PIG::gpQueryCallback(pigain::Query::Request& req, pigain::Query::Response& 
   return true;
 }
 
-bool PIG::bestNodeCallback(pigain::BestNode::Request& req,
-                           pigain::BestNode::Response& res)
+bool PIG::bestNodeCallback(aeplanner_msgs::BestNode::Request& req, aeplanner_msgs::BestNode::Response& res)
 {
   box query_box(bbx_min_, bbx_max_);
   std::vector<value> hits;
@@ -128,9 +124,9 @@ bool PIG::bestNodeCallback(pigain::BestNode::Request& req,
   return true;
 }
 
-void PIG::gainCallback(const pigain::Node::ConstPtr& msg)
+void PIG::gainCallback(const aeplanner_msgs::Node::ConstPtr& msg)
 {
-  point p(msg->position.x, msg->position.y, msg->position.z);
+  point p(msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z);
 
   rtree_.insert(std::make_tuple(p, Node(*msg), id_++));
 }
@@ -164,11 +160,10 @@ void PIG::evaluateCallback(const ros::TimerEvent& event)
     x(i, 2) = position.z;
   }
 
-  Eigen::Matrix<double, Eigen::Dynamic, 3> x_star(
-      int((bbx_max_.get<0>() - bbx_min_.get<0>()) / resolution_) +
-          int((bbx_max_.get<1>() - bbx_min_.get<1>()) / resolution_) +
-          int((bbx_max_.get<2>() - bbx_min_.get<2>()) / resolution_),
-      3);
+  Eigen::Matrix<double, Eigen::Dynamic, 3> x_star(int((bbx_max_.get<0>() - bbx_min_.get<0>()) / resolution_) +
+                                                      int((bbx_max_.get<1>() - bbx_min_.get<1>()) / resolution_) +
+                                                      int((bbx_max_.get<2>() - bbx_min_.get<2>()) / resolution_),
+                                                  3);
   size_t index = 0;
   for (double x = bbx_min_.get<0>(); x < bbx_max_.get<0>(); x += resolution_)
   {
@@ -184,17 +179,15 @@ void PIG::evaluateCallback(const ros::TimerEvent& event)
     }
   }
 
-  std::pair<double, double> gp_response =
-      gp(y, x, x_star, hyper_l_, hyper_sigma_f_, hyper_sigma_n_);
+  std::pair<double, double> gp_response = gp(y, x, x_star, hyper_l_, hyper_sigma_f_, hyper_sigma_n_);
 
   visualization_msgs::MarkerArray mean_markers;
   visualization_msgs::MarkerArray sigma_markers;
   for (size_t i = 0; i < x_star.rows(); ++i)
   {
-    mean_markers.markers.push_back(pointToMarker(
-        i, x_star.row(i), gp_response.first, std::max(1.0 - gp_response.second, 0.0)));
-    sigma_markers.markers.push_back(
-        pointToMarker(i, x_star.row(i), gp_response.second * 2));
+    mean_markers.markers.push_back(
+        pointToMarker(i, x_star.row(i), gp_response.first, std::max(1.0 - gp_response.second, 0.0)));
+    sigma_markers.markers.push_back(pointToMarker(i, x_star.row(i), gp_response.second * 2));
   }
 
   mean_pub_.publish(mean_markers);
@@ -229,7 +222,7 @@ void PIG::reevaluateCallback(const ros::TimerEvent& event)
     }
   }
 
-  aeplanner::Reevaluate srv;
+  aeplanner_msgs::Reevaluate srv;
   srv.request.point = reevaluate_position_list;
   if (!reevaluate_client_.call(srv))
   {
@@ -271,8 +264,7 @@ void PIG::rvizCallback(const ros::TimerEvent& event)
   marker_pub_.publish(markers);
 }
 
-visualization_msgs::Marker PIG::pointToMarker(unsigned int id, Eigen::Vector3d point,
-                                              double v, double a)
+visualization_msgs::Marker PIG::pointToMarker(unsigned int id, Eigen::Vector3d point, double v, double a)
 {
   visualization_msgs::Marker marker;
   marker.header.frame_id = "map";

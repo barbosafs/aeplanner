@@ -7,6 +7,7 @@ add_definitions(-std=c++11)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  aeplanner_msgs
   roscpp
   rospy
   tf
@@ -19,9 +20,6 @@ find_package(catkin REQUIRED COMPONENTS
   genmsg 
   actionlib_msgs 
   actionlib
-  aeplanner
-  aeplanner_evaluation
-  rrtplanner
 )
 
 find_package(octomap REQUIRED)
@@ -61,8 +59,8 @@ find_package(PCL REQUIRED)
 ##   * add every package in MSG_DEP_SET to generate_messages(DEPENDENCIES ...)
 
 # find_package(catkin REQUIRED genmsg actionlib_msgs actionlib)
-add_action_files(DIRECTORY action FILES FlyTo.action)
-generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs)
+# add_action_files(DIRECTORY action FILES FlyTo.action)
+# generate_messages(DEPENDENCIES actionlib_msgs geometry_msgs)
 ## Generate messages in the 'msg' folder
 # add_message_files(
 #   FILES

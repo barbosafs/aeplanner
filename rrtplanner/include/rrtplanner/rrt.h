@@ -10,8 +10,8 @@
 
 #include <eigen3/Eigen/Dense>
 
-#include <rrtplanner/rrtAction.h>
 #include <actionlib/server/simple_action_server.h>
+#include <aeplanner_msgs/rrtAction.h>
 
 #include <kdtree/kdtree.h>
 #include <nav_msgs/Path.h>
@@ -25,8 +25,7 @@ struct RrtNode
   std::vector<RrtNode *> children;
   ~RrtNode()
   {
-    for (typename std::vector<RrtNode *>::iterator node_it = children.begin();
-         node_it != children.end(); ++node_it)
+    for (typename std::vector<RrtNode *>::iterator node_it = children.begin(); node_it != children.end(); ++node_it)
     {
       delete (*node_it);
       (*node_it) = NULL;
@@ -47,7 +46,7 @@ public:
   Rrt(const ros::NodeHandle &nh);
   void octomapCallback(const octomap_msgs::Octomap &msg);
 
-  void execute(const rrtplanner::rrtGoalConstPtr &goal);
+  void execute(const aeplanner_msgs::rrtGoalConstPtr &goal);
   void visualizeGoals(std::vector<geometry_msgs::Pose> goals);
   void visualizeNode(geometry_msgs::Point pos, int id = 0);
   void visualizePose(geometry_msgs::Pose pose, int id = 0);
@@ -62,14 +61,15 @@ public:
   RrtNode *addNodeToTree(kdtree *kd_tree, RrtNode *parent, Eigen::Vector3d new_pos);
   RrtNode *getGoal(kdtree *goal_tree, RrtNode *new_node, double l, double r, double r_os);
   nav_msgs::Path getBestPath(std::vector<RrtNode *> goals);
-  std::vector<geometry_msgs::Pose> checkIfGoalReached(kdtree *goal_tree, RrtNode *new_node, double l, double r, double r_os);
+  std::vector<geometry_msgs::Pose> checkIfGoalReached(kdtree *goal_tree, RrtNode *new_node, double l, double r,
+                                                      double r_os);
 
 private:
   ros::NodeHandle nh_;
   std::shared_ptr<octomap::OcTree> ot_;
 
   ros::Subscriber octomap_sub_;
-  actionlib::SimpleActionServer<rrtplanner::rrtAction> as_;
+  actionlib::SimpleActionServer<aeplanner_msgs::rrtAction> as_;
 
   std::string frame_id_;
 
@@ -80,9 +80,8 @@ private:
   double extension_range_;
 };
 
-float CylTest_CapsFirst(const octomap::point3d &pt1,
-                        const octomap::point3d &pt2,
-                        float lsq, float rsq, const octomap::point3d &pt);
-} // namespace aeplanner_ns
+float CylTest_CapsFirst(const octomap::point3d &pt1, const octomap::point3d &pt2, float lsq, float rsq,
+                        const octomap::point3d &pt);
+}  // namespace aeplanner_ns
 
 #endif

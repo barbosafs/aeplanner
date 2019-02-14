@@ -28,9 +28,9 @@ Rrt::Rrt(const ros::NodeHandle& nh)
   as_.start();
 }
 
-void Rrt::execute(const rrtplanner::rrtGoalConstPtr& goal)
+void Rrt::execute(const aeplanner_msgs::rrtGoalConstPtr& goal)
 {
-  rrtplanner::rrtResult result;
+  aeplanner_msgs::rrtResult result;
   if (!ot_)
   {
     ROS_WARN("No octomap received");
@@ -55,8 +55,7 @@ void Rrt::execute(const rrtplanner::rrtGoalConstPtr& goal)
   ROS_WARN_STREAM("We have this many goals for RRT: " << goal->goal_poses.poses.size());
   for (int i = 0; i < goal->goal_poses.poses.size(); ++i)
   {
-    Eigen::Vector3d* g = new Eigen::Vector3d(goal->goal_poses.poses[i].position.x,
-                                             goal->goal_poses.poses[i].position.y,
+    Eigen::Vector3d* g = new Eigen::Vector3d(goal->goal_poses.poses[i].position.x, goal->goal_poses.poses[i].position.y,
                                              goal->goal_poses.poses[i].position.z);
     kd_insert3(goal_tree, (*g)[0], (*g)[1], (*g)[2], g);
   }
@@ -169,16 +168,13 @@ RrtNode* Rrt::chooseParent(kdtree* kd_tree, Eigen::Vector3d node, double l)
 void Rrt::rewire(kdtree* kd_tree, RrtNode* new_node, double l, double r, double r_os)
 {
   RrtNode* node_nn;
-  kdres* nearest = kd_nearest_range3(kd_tree, new_node->pos[0], new_node->pos[1],
-                                     new_node->pos[2], l + 0.5);
+  kdres* nearest = kd_nearest_range3(kd_tree, new_node->pos[0], new_node->pos[1], new_node->pos[2], l + 0.5);
   while (!kd_res_end(nearest))
   {
     node_nn = (RrtNode*)kd_res_item_data(nearest);
     if (node_nn->cost() > new_node->cost() + (node_nn->pos - new_node->pos).norm())
     {
-      if (!collisionLine(
-              new_node->pos,
-              node_nn->pos + (node_nn->pos - new_node->pos).normalized() * r_os, r))
+      if (!collisionLine(new_node->pos, node_nn->pos + (node_nn->pos - new_node->pos).normalized() * r_os, r))
         node_nn->parent = new_node;
     }
     kd_res_next(nearest);
@@ -206,11 +202,9 @@ RrtNode* Rrt::addNodeToTree(kdtree* kd_tree, RrtNode* parent, Eigen::Vector3d ne
   return new_node;
 }
 
-RrtNode* Rrt::getGoal(kdtree* goal_tree, RrtNode* new_node, double l, double r,
-                      double r_os)
+RrtNode* Rrt::getGoal(kdtree* goal_tree, RrtNode* new_node, double l, double r, double r_os)
 {
-  kdres* nearest_goal =
-      kd_nearest3(goal_tree, new_node->pos[0], new_node->pos[1], new_node->pos[2]);
+  kdres* nearest_goal = kd_nearest3(goal_tree, new_node->pos[0], new_node->pos[1], new_node->pos[2]);
   if (kd_res_size(nearest_goal) <= 0)
   {
     kd_res_free(nearest_goal);
@@ -220,8 +214,7 @@ RrtNode* Rrt::getGoal(kdtree* goal_tree, RrtNode* new_node, double l, double r,
   kd_res_free(nearest_goal);
 
   if ((*g_nn - new_node->pos).norm() < 1.5)
-    if (!collisionLine(new_node->pos, *g_nn + (*g_nn - new_node->pos).normalized() * r_os,
-                       r))
+    if (!collisionLine(new_node->pos, *g_nn + (*g_nn - new_node->pos).normalized() * r_os, r))
       return new_node;
 
   return NULL;
@@ -271,14 +264,12 @@ nav_msgs::Path Rrt::getBestPath(std::vector<RrtNode*> goals)
   return path;
 }
 
-std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(kdtree* goal_tree,
-                                                         RrtNode* new_node, double l,
-                                                         double r, double r_os)
+std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(kdtree* goal_tree, RrtNode* new_node, double l, double r,
+                                                         double r_os)
 {
   std::vector<geometry_msgs::Pose> path;
 
-  kdres* nearest_goal =
-      kd_nearest3(goal_tree, new_node->pos[0], new_node->pos[1], new_node->pos[2]);
+  kdres* nearest_goal = kd_nearest3(goal_tree, new_node->pos[0], new_node->pos[1], new_node->pos[2]);
   if (kd_res_size(nearest_goal) <= 0)
   {
     kd_res_free(nearest_goal);
@@ -289,8 +280,7 @@ std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(kdtree* goal_tree,
 
   if ((*g_nn - new_node->pos).norm() < 2 * l)
   {
-    if (!collisionLine(new_node->pos, *g_nn + (*g_nn - new_node->pos).normalized() * r_os,
-                       r))
+    if (!collisionLine(new_node->pos, *g_nn + (*g_nn - new_node->pos).normalized() * r_os, r))
     {
       RrtNode* n = new_node;
       for (int id = 0; n->parent; ++id)
@@ -304,8 +294,7 @@ std::vector<geometry_msgs::Pose> Rrt::checkIfGoalReached(kdtree* goal_tree,
         // Zero out rotation
         // along x and y axis
         // so only yaw is kept
-        Eigen::Vector3d dir(n->pos[0] - n->parent->pos[0], n->pos[1] - n->parent->pos[1],
-                            0);
+        Eigen::Vector3d dir(n->pos[0] - n->parent->pos[0], n->pos[1] - n->parent->pos[1], 0);
         q.setFromTwoVectors(init, dir);
 
         p.orientation.x = q.x();
@@ -332,10 +321,8 @@ bool Rrt::collisionLine(Eigen::Vector3d p1, Eigen::Vector3d p2, double r)
 
   octomap::point3d start(p1[0], p1[1], p1[2]);
   octomap::point3d end(p2[0], p2[1], p2[2]);
-  octomap::point3d min(std::min(p1[0], p2[0]) - r, std::min(p1[1], p2[1]) - r,
-                       std::min(p1[2], p2[2]) - r);
-  octomap::point3d max(std::max(p1[0], p2[0]) + r, std::max(p1[1], p2[1]) + r,
-                       std::max(p1[2], p2[2]) + r);
+  octomap::point3d min(std::min(p1[0], p2[0]) - r, std::min(p1[1], p2[1]) - r, std::min(p1[2], p2[2]) - r);
+  octomap::point3d max(std::max(p1[0], p2[0]) + r, std::max(p1[1], p2[1]) + r, std::max(p1[2], p2[2]) + r);
   double lsq = (end - start).norm_sq();
   double rsq = r * r;
 
@@ -344,8 +331,7 @@ bool Rrt::collisionLine(Eigen::Vector3d p1, Eigen::Vector3d p2, double r)
   if (!ot_res)
     return true;
 
-  for (octomap::OcTree::leaf_bbx_iterator it = ot->begin_leafs_bbx(min, max),
-                                          it_end = ot->end_leafs_bbx();
+  for (octomap::OcTree::leaf_bbx_iterator it = ot->begin_leafs_bbx(min, max), it_end = ot->end_leafs_bbx();
        it != it_end; ++it)
   {
     octomap::point3d pt(it.getX(), it.getY(), it.getZ());
@@ -448,8 +434,8 @@ bool Rrt::collisionLine(Eigen::Vector3d p1, Eigen::Vector3d p2, double r)
 // is inside.
 //
 //-----------------------------------------------------------------------------
-float CylTest_CapsFirst(const octomap::point3d& pt1, const octomap::point3d& pt2,
-                        float lsq, float rsq, const octomap::point3d& pt)
+float CylTest_CapsFirst(const octomap::point3d& pt1, const octomap::point3d& pt2, float lsq, float rsq,
+                        const octomap::point3d& pt)
 {
   float dx, dy,
       dz;  // vector d  from
@@ -612,8 +598,7 @@ void Rrt::visualizeEdge(RrtNode* node, int id)
   a.pose.position.z = node->parent->pos[2];
   Eigen::Quaternion<double> q;
   Eigen::Vector3d init(1.0, 0.0, 0.0);
-  Eigen::Vector3d dir(node->pos[0] - node->parent->pos[0],
-                      node->pos[1] - node->parent->pos[1],
+  Eigen::Vector3d dir(node->pos[0] - node->parent->pos[0], node->pos[1] - node->parent->pos[1],
                       node->pos[2] - node->parent->pos[2]);
   q.setFromTwoVectors(init, dir);
   q.normalize();
@@ -651,8 +636,7 @@ void Rrt::visualizePath(RrtNode* node)
     a.pose.position.z = node->parent->pos[2];
     Eigen::Quaternion<double> q;
     Eigen::Vector3d init(1.0, 0.0, 0.0);
-    Eigen::Vector3d dir(node->pos[0] - node->parent->pos[0],
-                        node->pos[1] - node->parent->pos[1],
+    Eigen::Vector3d dir(node->pos[0] - node->parent->pos[0], node->pos[1] - node->parent->pos[1],
                         node->pos[2] - node->parent->pos[2]);
     q.setFromTwoVectors(init, dir);
     q.normalize();

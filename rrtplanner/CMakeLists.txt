@@ -8,6 +8,7 @@ add_compile_options(-std=c++11)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+  aeplanner_msgs
   roscpp
   visualization_msgs
   message_generation
@@ -69,20 +70,20 @@ find_package(Eigen3 REQUIRED)
 # )
 
 ## Generate actions in the 'action' folder
-add_action_files(
-  DIRECTORY action 
-  FILES rrt.action
-)
+# add_action_files(
+#   DIRECTORY action 
+#   FILES rrt.action
+# )
 
 ## Generate added messages and services with any dependencies listed here
-generate_messages(
-  DEPENDENCIES
-  std_msgs
-  geometry_msgs
-  visualization_msgs
-  actionlib_msgs
-  nav_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   std_msgs
+#   geometry_msgs
+#   visualization_msgs
+#   actionlib_msgs
+#   nav_msgs
+# )
 
 ################################################
 ## Declare ROS dynamic reconfigure parameters ##

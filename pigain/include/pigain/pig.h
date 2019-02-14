@@ -3,17 +3,18 @@
 
 #include <ros/ros.h>
 
+#include <geometry_msgs/PoseStamped.h>
 #include <visualization_msgs/Marker.h>
 #include <visualization_msgs/MarkerArray.h>
-#include <geometry_msgs/PoseStamped.h>
 
-#include <pigain/Node.h>
-#include <pigain/Query.h>
-#include <pigain/BestNode.h>
+#include <aeplanner_msgs/BestNode.h>
+#include <aeplanner_msgs/Node.h>
+#include <aeplanner_msgs/Query.h>
 
 #include <boost/geometry.hpp>
 #include <boost/geometry/index/rtree.hpp>
 
+#include <tf2/utils.h>
 #include <eigen3/Eigen/Dense>
 
 namespace pig
@@ -28,19 +29,19 @@ struct Node
   {
   }
 
-  Node(const geometry_msgs::Point& position, double yaw, double gain)
-    : position(position), yaw(yaw), gain(gain)
+  Node(const geometry_msgs::Point& position, double yaw, double gain) : position(position), yaw(yaw), gain(gain)
   {
   }
 
-  Node(const pigain::Node& node) : position(node.position), yaw(node.yaw), gain(node.gain)
+  Node(const aeplanner_msgs::Node& node)
+    : position(node.pose.pose.position), yaw(tf2::getYaw(node.pose.pose.orientation)), gain(node.gain)
   {
   }
 
   bool operator==(const Node& rhs) const
   {
-    return yaw == rhs.yaw && gain == rhs.gain && position.x == rhs.position.x &&
-           position.y == rhs.position.y && position.z == rhs.position.z;
+    return yaw == rhs.yaw && gain == rhs.gain && position.x == rhs.position.x && position.y == rhs.position.y &&
+           position.z == rhs.position.z;
   }
 };
 
@@ -99,11 +100,11 @@ public:
   PIG(ros::NodeHandle& nh);
 
 private:
-  bool gpQueryCallback(pigain::Query::Request& req, pigain::Query::Response& res);
+  bool gpQueryCallback(aeplanner_msgs::Query::Request& req, aeplanner_msgs::Query::Response& res);
 
-  bool bestNodeCallback(pigain::BestNode::Request& req, pigain::BestNode::Response& res);
+  bool bestNodeCallback(aeplanner_msgs::BestNode::Request& req, aeplanner_msgs::BestNode::Response& res);
 
-  void gainCallback(const pigain::Node::ConstPtr& msg);
+  void gainCallback(const aeplanner_msgs::Node::ConstPtr& msg);
 
   void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg);
 
@@ -113,8 +114,7 @@ private:
 
   void rvizCallback(const ros::TimerEvent& event);
 
-  visualization_msgs::Marker pointToMarker(unsigned int id, Eigen::Vector3d point,
-                                           double v = 0, double a = 0);
+  visualization_msgs::Marker pointToMarker(unsigned int id, Eigen::Vector3d point, double v = 0, double a = 0);
 
   visualization_msgs::Marker nodeToMarker(unsigned int id, const Node& node);
 };

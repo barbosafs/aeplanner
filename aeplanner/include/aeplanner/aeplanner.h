@@ -3,8 +3,8 @@
 
 #include <ros/ros.h>
 
-#include <geometry_msgs/PoseStamped.h>
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/PoseStamped.h>
 
 #include <tf/transform_listener.h>
 
@@ -17,20 +17,20 @@
 
 #include <aeplanner/data_structures.h>
 #include <aeplanner/param.h>
-#include <aeplanner/Reevaluate.h>
+#include <aeplanner_msgs/Reevaluate.h>
 
 #include <aeplanner/aeplanner_viz.h>
 #include <visualization_msgs/MarkerArray.h>
 
-#include <aeplanner/aeplannerAction.h>
 #include <actionlib/server/simple_action_server.h>
+#include <aeplanner_msgs/aeplannerAction.h>
 
-#include <pigain/Node.h>
-#include <pigain/Query.h>
-#include <pigain/BestNode.h>
+#include <aeplanner_msgs/BestNode.h>
+#include <aeplanner_msgs/Node.h>
+#include <aeplanner_msgs/Query.h>
 
-#include <dynamic_reconfigure/server.h>
 #include <aeplanner/LTLConfig.h>
+#include <dynamic_reconfigure/server.h>
 #include <nav_msgs/Path.h>
 
 namespace aeplanner
@@ -39,7 +39,7 @@ class AEPlanner
 {
 private:
   ros::NodeHandle nh_;
-  actionlib::SimpleActionServer<aeplanner::aeplannerAction> as_;
+  actionlib::SimpleActionServer<aeplanner_msgs::aeplannerAction> as_;
 
   Params params_;
 
@@ -88,8 +88,7 @@ private:
   double max_sampling_radius_squared_;
 
   // Service server callback
-  bool reevaluate(aeplanner::Reevaluate::Request& req,
-                  aeplanner::Reevaluate::Response& res);
+  bool reevaluate(aeplanner_msgs::Reevaluate::Request& req, aeplanner_msgs::Reevaluate::Response& res);
 
   // ---------------- Initialization ----------------
   RRTNode* initialize();
@@ -117,8 +116,8 @@ private:
 
   geometry_msgs::Pose vecToPose(Eigen::Vector4d state);
 
-  float CylTest_CapsFirst(const octomap::point3d& pt1, const octomap::point3d& pt2,
-                          float lsq, float rsq, const octomap::point3d& pt);
+  float CylTest_CapsFirst(const octomap::point3d& pt1, const octomap::point3d& pt2, float lsq, float rsq,
+                          const octomap::point3d& pt);
 
   // ---------------- Frontier ----------------
   geometry_msgs::PoseArray getFrontiers();
@@ -132,7 +131,7 @@ private:
 public:
   AEPlanner(const ros::NodeHandle& nh);
 
-  void execute(const aeplanner::aeplannerGoalConstPtr& goal);
+  void execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal);
 
   void octomapCallback(const octomap_msgs::Octomap& msg);
   void agentPoseCallback(const geometry_msgs::PoseStamped& msg);

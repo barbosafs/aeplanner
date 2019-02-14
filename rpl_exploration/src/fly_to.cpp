@@ -1,5 +1,5 @@
 #include <actionlib/server/simple_action_server.h>
-#include <rpl_exploration/FlyToAction.h>  // Note: "Action" is appended
+#include <aeplanner_msgs/FlyToAction.h>  // Note: "Action" is appended
 
 #include <ros/ros.h>
 #include <tf/transform_listener.h>
@@ -11,7 +11,7 @@ class FlyTo
 private:
   ros::NodeHandle nh_;
   ros::Publisher pub_;
-  actionlib::SimpleActionServer<rpl_exploration::FlyToAction> as_;
+  actionlib::SimpleActionServer<aeplanner_msgs::FlyToAction> as_;
 
   tf::TransformListener listener;
 
@@ -23,8 +23,8 @@ public:
     ROS_INFO("Starting fly to server");
     as_.start();
   }
-  void execute(const rpl_exploration::FlyToGoalConstPtr& goal,
-               actionlib::SimpleActionServer<rpl_exploration::FlyToAction>* as)
+  void execute(const aeplanner_msgs::FlyToGoalConstPtr& goal,
+               actionlib::SimpleActionServer<aeplanner_msgs::FlyToAction>* as)
   {
     ROS_INFO_STREAM("Got new goal: Fly to (" << goal->pose.pose.position.x << ", " << goal->pose.pose.position.y << ", "
                                              << goal->pose.pose.position.z << ") ");

@@ -32,8 +32,7 @@ public:
   }
   ~RRTNode()
   {
-    for (typename std::vector<RRTNode*>::iterator node_it = children_.begin();
-         node_it != children_.end(); ++node_it)
+    for (typename std::vector<RRTNode*>::iterator node_it = children_.begin(); node_it != children_.end(); ++node_it)
     {
       delete (*node_it);
       (*node_it) = NULL;
@@ -69,9 +68,8 @@ public:
     return new_node;
   }
 
-  double getDistanceGain(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda,
-                         double min_distance, double max_distance,
-                         bool min_distance_active, bool max_distance_active,
+  double getDistanceGain(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double min_distance,
+                         double max_distance, bool min_distance_active, bool max_distance_active,
                          double max_search_distance, double radius)
   {
     if (!min_distance_active && !max_distance_active)
@@ -79,14 +77,12 @@ public:
       return 1;
     }
 
-    double closest_distance =
-        getDistanceToClosestOccupiedBounded(ot, max_search_distance, radius);
+    double closest_distance = getDistanceToClosestOccupiedBounded(ot, max_search_distance, radius);
 
     double distance_gain = 0;
     if (min_distance_active && max_distance_active)
     {
-      distance_gain =
-          std::min(closest_distance - min_distance, max_distance - closest_distance);
+      distance_gain = std::min(closest_distance - min_distance, max_distance - closest_distance);
     }
     else if (min_distance_active)
     {
@@ -100,9 +96,8 @@ public:
     return std::exp(-ltl_lambda * distance_gain);
   }
 
-  double score(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda,
-               double min_distance, double max_distance, bool min_distance_active,
-               bool max_distance_active, double max_search_distance, double radius,
+  double score(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double min_distance, double max_distance,
+               bool min_distance_active, bool max_distance_active, double max_search_distance, double radius,
                double lambda)
   {
     if (score_ot_ && *ot == *score_ot_ && parent_ == score_parent_)
@@ -119,22 +114,17 @@ public:
       return score_;
     }
 
-    double distance_gain =
-        getDistanceGain(ot, ltl_lambda, min_distance, max_distance, min_distance_active,
-                        max_distance_active, max_search_distance, radius);
+    double distance_gain = getDistanceGain(ot, ltl_lambda, min_distance, max_distance, min_distance_active,
+                                           max_distance_active, max_search_distance, radius);
 
-    score_ =
-        this->parent_->score(ot, ltl_lambda, min_distance, max_distance,
-                             min_distance_active, max_distance_active,
-                             max_search_distance, radius, lambda) +
-        this->gain_ *
-            exp(-lambda * (this->distance(this->parent_) * std::fmax(distance_gain, 1)));
+    score_ = this->parent_->score(ot, ltl_lambda, min_distance, max_distance, min_distance_active, max_distance_active,
+                                  max_search_distance, radius, lambda) +
+             this->gain_ * exp(-lambda * (this->distance(this->parent_) * std::fmax(distance_gain, 1)));
     return score_;
   }
 
-  double cost(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double min_distance,
-              double max_distance, bool min_distance_active, bool max_distance_active,
-              double max_search_distance, double radius)
+  double cost(std::shared_ptr<octomap::OcTree> ot, double ltl_lambda, double min_distance, double max_distance,
+              bool min_distance_active, bool max_distance_active, double max_search_distance, double radius)
   {
     if (cost_ot_ && *ot == *cost_ot_ && parent_ == cost_parent_)
     {
@@ -150,19 +140,17 @@ public:
       return cost_;
     }
 
-    double distance_gain =
-        getDistanceGain(ot, ltl_lambda, min_distance, max_distance, min_distance_active,
-                        max_distance_active, max_search_distance, radius);
+    double distance_gain = getDistanceGain(ot, ltl_lambda, min_distance, max_distance, min_distance_active,
+                                           max_distance_active, max_search_distance, radius);
 
     cost_ = (this->distance(this->parent_) * std::fmax(distance_gain, 1)) +
-            this->parent_->cost(ot, ltl_lambda, min_distance, max_distance,
-                                min_distance_active, max_distance_active,
+            this->parent_->cost(ot, ltl_lambda, min_distance, max_distance, min_distance_active, max_distance_active,
                                 max_search_distance, radius);
     return cost_;
   }
 
-  double getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree> ot,
-                                             double max_search_distance, double radius)
+  double getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree> ot, double max_search_distance,
+                                             double radius)
   {
     Eigen::Vector3d start;
     if (parent_)
@@ -180,27 +168,23 @@ public:
     Eigen::Vector3d end(state_[0], state_[1], state_[2]);
 
     Eigen::Vector3d min(std::min(start[0] - radius, end[0] - max_search_distance),
-                        std::min(start[1] - radius, end[1] - max_search_distance),
-                        std::min(start[2], end[2]) - radius);
+                        std::min(start[1] - radius, end[1] - max_search_distance), std::min(start[2], end[2]) - radius);
     Eigen::Vector3d max(std::max(start[0] + radius, end[0] + max_search_distance),
-                        std::max(start[1] + radius, end[1] + max_search_distance),
-                        std::max(start[2], end[2]) + radius);
+                        std::max(start[1] + radius, end[1] + max_search_distance), std::max(start[2], end[2]) + radius);
 
     double lsq = (end - start).squaredNorm();
     double rsq = max_search_distance * max_search_distance;
 
     std::set<std::tuple<double, double, double>> closed_set;
-    std::vector<std::priority_queue<std::tuple<double, double, double, double>>> open_set(
-        4);
+    std::vector<std::priority_queue<std::tuple<double, double, double, double>>> open_set(4);
 
     std::vector<octomap::point3d> line_points;
-    ot->computeRay(octomap::point3d(start[0], start[1], start[2]),
-                   octomap::point3d(end[0], end[1], end[2]), line_points);
+    ot->computeRay(octomap::point3d(start[0], start[1], start[2]), octomap::point3d(end[0], end[1], end[2]),
+                   line_points);
 
     for (octomap::point3d point : line_points)
     {
-      octomap::OcTreeKey key =
-          ot->coordToKey(point, ot->getTreeDepth() - (open_set.size() - 1));
+      octomap::OcTreeKey key = ot->coordToKey(point, ot->getTreeDepth() - (open_set.size() - 1));
       // open_set[0].emplace(key[0], key[1], key[2]);
       open_set[0].emplace(0.0, point.x(), point.y(), point.z());
     }
@@ -209,15 +193,13 @@ public:
     {
       ROS_INFO_STREAM("i: " << i);
       double res = ot->getResolution() * std::pow((open_set.size() - 1) - i, 2.0);
-      double next_res =
-          ot->getResolution() * std::pow((open_set.size() - 1) - (i + 1), 2.0);
+      double next_res = ot->getResolution() * std::pow((open_set.size() - 1) - (i + 1), 2.0);
 
       closed_set.clear();
       while (!open_set[i].empty())
       {
         std::tuple<double, double, double, double> current = open_set[i].top();
-        Eigen::Vector3d point(std::get<1>(current), std::get<2>(current),
-                              std::get<3>(current));
+        Eigen::Vector3d point(std::get<1>(current), std::get<2>(current), std::get<3>(current));
         open_set[i].pop();
         if (!closed_set.emplace(point[0], point[1], point[2]).second)
         {
@@ -242,8 +224,7 @@ public:
           }
 
           octomap::OcTreeNode* v =
-              ot->search(point[0], point[1], point[2],
-                         ot->getTreeDepth() - ((open_set.size() - 1) - i));
+              ot->search(point[0], point[1], point[2], ot->getTreeDepth() - ((open_set.size() - 1) - i));
 
           if (v != NULL && v->getLogOdds() > 0)
           {
@@ -256,9 +237,8 @@ public:
                 {
                   for (double z = -next_res; z <= next_res; z += next_res)
                   {
-                    open_set[i + 1].emplace(
-                        computeDistance(point + Eigen::Vector3d(x, y, z), start, end),
-                        point[0] + x, point[1] + y, point[2] + z);
+                    open_set[i + 1].emplace(computeDistance(point + Eigen::Vector3d(x, y, z), start, end), point[0] + x,
+                                            point[1] + y, point[2] + z);
                   }
                 }
               }
@@ -280,9 +260,8 @@ public:
                 {
                   if (x != 0 || y != 0 || z != 0)
                   {
-                    open_set[i].emplace(
-                        computeDistance(point + Eigen::Vector3d(x, y, z), start, end),
-                        point[0] + x, point[1] + y, point[2] + z);
+                    open_set[i].emplace(computeDistance(point + Eigen::Vector3d(x, y, z), start, end), point[0] + x,
+                                        point[1] + y, point[2] + z);
                   }
                 }
               }
@@ -295,8 +274,7 @@ public:
     return 10000000;
   }
 
-  double computeDistance(Eigen::Vector3d point, Eigen::Vector3d start,
-                         Eigen::Vector3d end)
+  double computeDistance(Eigen::Vector3d point, Eigen::Vector3d start, Eigen::Vector3d end)
   {
     Eigen::Vector3d d = (end - start) / (end - start).norm();
     Eigen::Vector3d v = point - start;
@@ -341,8 +319,8 @@ public:
   // Return:  distance squared from cylinder axis if point is inside.
   //
   //-----------------------------------------------------------------------------
-  float CylTestCapsFirst(const Eigen::Vector3d& pt1, const Eigen::Vector3d& pt2,
-                         float lsq, float rsq, const Eigen::Vector3d& pt)
+  float CylTestCapsFirst(const Eigen::Vector3d& pt1, const Eigen::Vector3d& pt2, float lsq, float rsq,
+                         const Eigen::Vector3d& pt)
   {
     float dx, dy, dz;     // vector d  from line segment point 1 to point 2
     float pdx, pdy, pdz;  // vector pd from point 1 to test point

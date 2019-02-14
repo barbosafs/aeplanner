@@ -4,6 +4,7 @@ project(aeplanner)
 add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
+  aeplanner_msgs
   roscpp
   geometry_msgs
   visualization_msgs
@@ -15,7 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib
 
   kdtree
-  pigain
   dynamic_reconfigure
 )
 find_package(cmake_modules REQUIRED)
@@ -29,28 +29,28 @@ if(OPENMP_FOUND)
   set(OpenMP_LIBS gomp)
 endif()
 
-add_message_files(
-  DIRECTORY msg 
-  FILES
-  Node.msg
-  LTLStats.msg
-)
-add_action_files(
-  DIRECTORY action 
-  FILES aeplanner.action
-)
-add_service_files(
-  DIRECTORY srv
-  FILES Reevaluate.srv
-)
+# add_message_files(
+#   DIRECTORY msg 
+#   FILES
+#   Node.msg
+#   LTLStats.msg
+# )
+# add_action_files(
+#   DIRECTORY action 
+#   FILES aeplanner.action
+# )
+# add_service_files(
+#   DIRECTORY srv
+#   FILES Reevaluate.srv
+# )
 
-generate_messages(
-  DEPENDENCIES
-  geometry_msgs
-  visualization_msgs
-  std_msgs
-  actionlib_msgs
-)
+# generate_messages(
+#   DEPENDENCIES
+#   geometry_msgs
+#   visualization_msgs
+#   std_msgs
+#  actionlib_msgs
+# )
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
 generate_dynamic_reconfigure_options(
