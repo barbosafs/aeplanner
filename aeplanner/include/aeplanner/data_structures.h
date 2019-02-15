@@ -28,10 +28,12 @@ public:
   double gain_;
   bool gain_explicitly_calculated_;
 
-  std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>> score_rtree_;
+  std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+      score_rtree_;
   RRTNode* score_parent_;
   double score_;
-  std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>> cost_rtree_;
+  std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+      cost_rtree_;
   RRTNode* cost_parent_;
   double cost_;
 
@@ -40,7 +42,8 @@ public:
   }
   ~RRTNode()
   {
-    for (typename std::vector<RRTNode*>::iterator node_it = children_.begin(); node_it != children_.end(); ++node_it)
+    for (typename std::vector<RRTNode*>::iterator node_it = children_.begin();
+         node_it != children_.end(); ++node_it)
     {
       delete (*node_it);
       (*node_it) = NULL;
@@ -76,10 +79,13 @@ public:
     return new_node;
   }
 
-  double getDistanceGain(std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>> rtree,
-                         double ltl_lambda, double min_distance, double max_distance, bool min_distance_active,
-                         bool max_distance_active, double max_search_distance, double radius, int min_depth,
-                         int max_depth)
+  double getDistanceGain(
+      std::shared_ptr<
+          boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+          rtree,
+      double ltl_lambda, double min_distance, double max_distance,
+      bool min_distance_active, bool max_distance_active, double max_search_distance,
+      double radius, double step_size)
   {
     if (!min_distance_active && !max_distance_active)
     {
@@ -101,13 +107,14 @@ public:
     }
     Eigen::Vector3d end(state_[0], state_[1], state_[2]);
 
-    std::pair<double, double> closest_distance =
-        getDistanceToClosestOccupiedBounded(rtree, start, end, max_search_distance, radius, min_depth, max_depth);
+    std::pair<double, double> closest_distance = getDistanceToClosestOccupiedBounded(
+        rtree, start, end, max_search_distance, radius, step_size);
 
     double distance_gain = 0;
     if (min_distance_active && max_distance_active)
     {
-      distance_gain = std::min(closest_distance.first - min_distance, max_distance - closest_distance.first);
+      distance_gain = std::min(closest_distance.first - min_distance,
+                               max_distance - closest_distance.second);
     }
     else if (min_distance_active)
     {
@@ -115,16 +122,19 @@ public:
     }
     else
     {
-      distance_gain = max_distance - closest_distance.first;
+      distance_gain = max_distance - closest_distance.second;
     }
 
     return std::exp(-ltl_lambda * distance_gain);
   }
 
-  double score(std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>> rtree,
-               double ltl_lambda, double min_distance, double max_distance, bool min_distance_active,
-               bool max_distance_active, double max_search_distance, double radius, int min_depth, int max_depth,
-               double lambda)
+  double
+      score(std::shared_ptr<
+                boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+                rtree,
+            double ltl_lambda, double min_distance, double max_distance,
+            bool min_distance_active, bool max_distance_active,
+            double max_search_distance, double radius, double step_size, double lambda)
   {
     if (score_rtree_ && parent_ == score_parent_)
     {
@@ -140,18 +150,25 @@ public:
       return score_;
     }
 
-    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance, min_distance_active,
-                                           max_distance_active, max_search_distance, radius, min_depth, max_depth);
+    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance,
+                                           min_distance_active, max_distance_active,
+                                           max_search_distance, radius, step_size);
 
-    score_ = this->parent_->score(rtree, ltl_lambda, min_distance, max_distance, min_distance_active,
-                                  max_distance_active, max_search_distance, radius, min_depth, max_depth, lambda) +
-             this->gain_ * exp(-lambda * (this->distance(this->parent_) * std::fmax(distance_gain, 1)));
+    score_ =
+        this->parent_->score(rtree, ltl_lambda, min_distance, max_distance,
+                             min_distance_active, max_distance_active,
+                             max_search_distance, radius, step_size, lambda) +
+        this->gain_ *
+            exp(-lambda * (this->distance(this->parent_) * std::fmax(distance_gain, 1)));
     return score_;
   }
 
-  double cost(std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>> rtree,
-              double ltl_lambda, double min_distance, double max_distance, bool min_distance_active,
-              bool max_distance_active, double max_search_distance, double radius, int min_depth, int max_depth)
+  double cost(std::shared_ptr<
+                  boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+                  rtree,
+              double ltl_lambda, double min_distance, double max_distance,
+              bool min_distance_active, bool max_distance_active,
+              double max_search_distance, double radius, double step_size)
   {
     if (cost_rtree_ && parent_ == cost_parent_)
     {
@@ -167,20 +184,23 @@ public:
       return cost_;
     }
 
-    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance, min_distance_active,
-                                           max_distance_active, max_search_distance, radius, min_depth, max_depth);
+    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance,
+                                           min_distance_active, max_distance_active,
+                                           max_search_distance, radius, step_size);
 
     cost_ = (this->distance(this->parent_) * std::fmax(distance_gain, 1)) +
-            this->parent_->cost(rtree, ltl_lambda, min_distance, max_distance, min_distance_active, max_distance_active,
-                                max_search_distance, radius, min_depth, max_depth);
+            this->parent_->cost(rtree, ltl_lambda, min_distance, max_distance,
+                                min_distance_active, max_distance_active,
+                                max_search_distance, radius, step_size);
     return cost_;
   }
 
-  static boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>
-  getRtree(std::shared_ptr<octomap::OcTree> ot, octomap::point3d min, octomap::point3d max)
+  static boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>> getRtree(
+      std::shared_ptr<octomap::OcTree> ot, octomap::point3d min, octomap::point3d max)
   {
     boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>> rtree;
-    for (octomap::OcTree::leaf_bbx_iterator it = ot->begin_leafs_bbx(min, max), it_end = ot->end_leafs_bbx();
+    for (octomap::OcTree::leaf_bbx_iterator it = ot->begin_leafs_bbx(min, max),
+                                            it_end = ot->end_leafs_bbx();
          it != it_end; ++it)
     {
       if (it->getLogOdds() > 0)
@@ -193,45 +213,62 @@ public:
   }
 
   static std::pair<double, double> getDistanceToClosestOccupiedBounded(
-      std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>> rtree,
-      Eigen::Vector3d start, Eigen::Vector3d end, double max_search_distance, double radius, int min_depth,
-      int max_depth)
+      std::shared_ptr<
+          boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+          rtree,
+      Eigen::Vector3d start, Eigen::Vector3d end, double max_search_distance,
+      double radius, double step_size)
   {
     point bbx_min_(std::min(start[0] - radius, end[0] - max_search_distance),
-                   std::min(start[1] - radius, end[1] - max_search_distance), std::min(start[2], end[2]) - radius);
+                   std::min(start[1] - radius, end[1] - max_search_distance),
+                   std::min(start[2], end[2]) - radius);
     point bbx_max_(std::max(start[0] + radius, end[0] + max_search_distance),
-                   std::max(start[1] + radius, end[1] + max_search_distance), std::max(start[2], end[2]) + radius);
+                   std::max(start[1] + radius, end[1] + max_search_distance),
+                   std::max(start[2], end[2]) + radius);
 
     box query_box(bbx_min_, bbx_max_);
     std::vector<value> hits;
     rtree->query(boost::geometry::index::intersects(query_box), std::back_inserter(hits));
 
-    int num_steps = 5;  // FIXME: Calculate
+    std::vector<Eigen::Vector3d> points;
+    points.push_back(start);
+    if (start != end)
+    {
+      // Interpolate between start and end with step size
+      for (double i = step_size; i < 1.0; i += step_size)
+      {
+        points.push_back(start + ((step_size / (end - start).norm()) * (end - start)));
+      }
+      points.push_back(end);
+    }
 
-    std::vector<std::vector<double>> closest(omp_get_max_threads(), std::vector<double>(num_steps, 10000000));
+    std::vector<std::vector<double>> closest(
+        omp_get_max_threads(), std::vector<double>(points.size(), 10000000));
+
+    double max_search_distance_squared = std::pow(max_search_distance, 2.0);
 
 #pragma omp parallel for
     for (int i = 0; i < hits.size(); ++i)
     {
       Eigen::Vector3d point(hits[i].get<0>(), hits[i].get<1>(), hits[i].get<2>());
 
-      if (point[2] < std::min(start[2], end[2]) - 0.1 || point[2] > std::max(start[2], end[2]) + 0.1)
+      if (point[2] < std::min(start[2], end[2]) - 0.1 ||
+          point[2] > std::max(start[2], end[2]) + 0.1)
       {
         continue;
       }
 
-      for (int j = 0; j < num_steps; ++j)
+      for (int j = 0; j < points.size(); ++j)
       {
-        Eigen::Vector3d line_point;  // FIXME: Calculate
+        double distance_squared = (point - points[j]).squaredNorm();
 
-        double distance = (point - line_point).norm();
-
-        if (distance > max_search_distance)
+        if (distance_squared > max_search_distance_squared)
         {
           continue;
         }
 
-        closest[omp_get_thread_num()][j] = std::min(closest[omp_get_thread_num()][j], distance);
+        closest[omp_get_thread_num()][j] =
+            std::min(closest[omp_get_thread_num()][j], distance_squared);
       }
     }
 
@@ -246,10 +283,11 @@ public:
 
     std::pair<std::vector<double>::iterator, std::vector<double>::iterator> minmax =
         std::minmax_element(final_closest.begin(), final_closest.end());
-    return std::make_pair(*minmax.first, *minmax.second);
+    return std::make_pair(std::sqrt(*minmax.first), std::sqrt(*minmax.second));
   }
 
-  static double computeDistance(Eigen::Vector3d point, Eigen::Vector3d start, Eigen::Vector3d end)
+  static double computeDistance(Eigen::Vector3d point, Eigen::Vector3d start,
+                                Eigen::Vector3d end)
   {
     if (start == end)
     {
@@ -315,8 +353,8 @@ public:
   // Return:  distance squared from cylinder axis if point is inside.
   //
   //-----------------------------------------------------------------------------
-  float CylTestCapsFirst(const Eigen::Vector3d& pt1, const Eigen::Vector3d& pt2, float lsq, float rsq,
-                         const Eigen::Vector3d& pt)
+  float CylTestCapsFirst(const Eigen::Vector3d& pt1, const Eigen::Vector3d& pt2,
+                         float lsq, float rsq, const Eigen::Vector3d& pt)
   {
     float dx, dy, dz;     // vector d  from line segment point 1 to point 2
     float pdx, pdy, pdz;  // vector pd from point 1 to test point

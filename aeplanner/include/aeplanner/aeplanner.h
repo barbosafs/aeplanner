@@ -84,13 +84,13 @@ private:
   std::vector<double> ltl_closest_distance_;
   double ltl_max_search_distance_;
   std::vector<std::pair<octomap::point3d, double>> ltl_search_distances_;
-  int ltl_min_depth_;
-  int ltl_max_depth_;
+  double ltl_step_size_;
 
   double max_sampling_radius_squared_;
 
   // Service server callback
-  bool reevaluate(aeplanner_msgs::Reevaluate::Request& req, aeplanner_msgs::Reevaluate::Response& res);
+  bool reevaluate(aeplanner_msgs::Reevaluate::Request& req,
+                  aeplanner_msgs::Reevaluate::Response& res);
 
   // ---------------- Initialization ----------------
   RRTNode* initialize(const Eigen::Vector4d& current_state);
@@ -98,18 +98,26 @@ private:
   void reevaluatePotentialInformationGainRecursive(RRTNode* node);
 
   // ---------------- Expand RRT Tree ----------------
-  void expandRRT(std::shared_ptr<octomap::OcTree> ot,
-                 std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>> rtree,
-                 const Eigen::Vector4d& current_state);
+  void
+  expandRRT(std::shared_ptr<octomap::OcTree> ot,
+            std::shared_ptr<
+                boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+                rtree,
+            const Eigen::Vector4d& current_state);
 
   Eigen::Vector4d sampleNewPoint();
   bool isInsideBoundaries(Eigen::Vector4d point);
   bool isInsideBoundaries(Eigen::Vector3d point);
   bool isInsideBoundaries(octomap::point3d point);
   bool collisionLine(Eigen::Vector4d p1, Eigen::Vector4d p2, double r);
-  RRTNode* chooseParent(std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>> rtree,
-                        RRTNode* node, double l);
-  void rewire(std::shared_ptr<boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>> rtree,
+  RRTNode* chooseParent(
+      std::shared_ptr<
+          boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+          rtree,
+      RRTNode* node, double l);
+  void rewire(std::shared_ptr<
+                  boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+                  rtree,
               kdtree* kd_tree, RRTNode* new_node, double l, double r, double r_os);
   Eigen::Vector4d restrictDistance(Eigen::Vector4d nearest, Eigen::Vector4d new_pos);
 
@@ -122,8 +130,8 @@ private:
 
   geometry_msgs::Pose vecToPose(Eigen::Vector4d state);
 
-  float CylTest_CapsFirst(const octomap::point3d& pt1, const octomap::point3d& pt2, float lsq, float rsq,
-                          const octomap::point3d& pt);
+  float CylTest_CapsFirst(const octomap::point3d& pt1, const octomap::point3d& pt2,
+                          float lsq, float rsq, const octomap::point3d& pt);
 
   // ---------------- Frontier ----------------
   geometry_msgs::PoseArray getFrontiers();
