@@ -81,6 +81,8 @@ private:
   double ltl_dist_add_path_;
   ros::Publisher ltl_path_pub_;
   ros::Publisher ltl_stats_pub_;
+  int ltl_iterations_;
+  double ltl_mean_closest_distance_;
   std::vector<double> ltl_closest_distance_;
   double ltl_max_search_distance_;
   std::vector<std::pair<octomap::point3d, double>> ltl_search_distances_;
@@ -109,7 +111,11 @@ private:
   bool isInsideBoundaries(Eigen::Vector4d point);
   bool isInsideBoundaries(Eigen::Vector3d point);
   bool isInsideBoundaries(octomap::point3d point);
-  bool collisionLine(Eigen::Vector4d p1, Eigen::Vector4d p2, double r);
+  bool collisionLine(
+      std::shared_ptr<
+          boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
+          rtree,
+      Eigen::Vector4d p1, Eigen::Vector4d p2, double r);
   RRTNode* chooseParent(
       std::shared_ptr<
           boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>

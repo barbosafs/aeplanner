@@ -219,14 +219,14 @@ public:
       Eigen::Vector3d start, Eigen::Vector3d end, double max_search_distance,
       double radius, double step_size)
   {
-    point bbx_min_(std::min(start[0] - radius, end[0] - max_search_distance),
-                   std::min(start[1] - radius, end[1] - max_search_distance),
-                   std::min(start[2], end[2]) - radius);
-    point bbx_max_(std::max(start[0] + radius, end[0] + max_search_distance),
-                   std::max(start[1] + radius, end[1] + max_search_distance),
-                   std::max(start[2], end[2]) + radius);
+    point bbx_min(std::min(start[0] - radius, end[0] - max_search_distance),
+                  std::min(start[1] - radius, end[1] - max_search_distance),
+                  std::min(start[2], end[2]) - radius);
+    point bbx_max(std::max(start[0] + radius, end[0] + max_search_distance),
+                  std::max(start[1] + radius, end[1] + max_search_distance),
+                  std::max(start[2], end[2]) + radius);
 
-    box query_box(bbx_min_, bbx_max_);
+    box query_box(bbx_min, bbx_max);
     std::vector<value> hits;
     rtree->query(boost::geometry::index::intersects(query_box), std::back_inserter(hits));
 
@@ -248,7 +248,7 @@ public:
     double max_search_distance_squared = std::pow(max_search_distance, 2.0);
 
 #pragma omp parallel for
-    for (int i = 0; i < hits.size(); ++i)
+    for (size_t i = 0; i < hits.size(); ++i)
     {
       Eigen::Vector3d point(hits[i].get<0>(), hits[i].get<1>(), hits[i].get<2>());
 
@@ -258,7 +258,7 @@ public:
         continue;
       }
 
-      for (int j = 0; j < points.size(); ++j)
+      for (size_t j = 0; j < points.size(); ++j)
       {
         double distance_squared = (point - points[j]).squaredNorm();
 
@@ -272,8 +272,8 @@ public:
       }
     }
 
-    std::vector<double> final_closest(closest.size(), 10000000);
-    for (size_t i = 0; i < closest.size(); ++i)
+    std::vector<double>& final_closest = closest[0];
+    for (size_t i = 1; i < closest.size(); ++i)
     {
       for (size_t j = 0; j < closest[i].size(); ++j)
       {

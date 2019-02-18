@@ -28,4 +28,14 @@ name="camera_manager" output="screen"/>
   </node>
 
   <node pkg="rpl_exploration" type="image_maxing.py" name="image_maxing" output="screen" />
+
+  <node pkg="stl_evaluation" type="stl_evaluation_node" name="std_evaluation_node" output="screen">
+    <param name="bbx_min_x" value="-10.0" />
+    <param name="bbx_min_y" value="-2.5" />
+    <param name="bbx_min_z" value="0" />
+    <param name="bbx_max_x" value="24" />
+    <param name="bbx_max_y" value="31" />
+    <param name="bbx_max_z" value="2.5" />
+    <param name="volume_scaler" value="4.0" />
+  </node>
 </launch>
