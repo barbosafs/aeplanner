@@ -16,7 +16,6 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs 
   actionlib
 
-  kdtree
   nav_msgs
 )
 find_package(octomap REQUIRED)
@@ -117,7 +116,7 @@ find_package(Eigen3 REQUIRED)
 catkin_package(
   INCLUDE_DIRS include ${OCTOMAP_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS}
   LIBRARIES rrtplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES}
-  CATKIN_DEPENDS message_runtime roscpp geometry_msgs visualization_msgs kdtree
+  CATKIN_DEPENDS message_runtime roscpp geometry_msgs visualization_msgs
 )
 
 ###########
