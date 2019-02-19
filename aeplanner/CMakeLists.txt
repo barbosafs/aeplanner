@@ -15,7 +15,6 @@ find_package(catkin REQUIRED COMPONENTS
   actionlib_msgs 
   actionlib
 
-  kdtree
   dynamic_reconfigure
 )
 find_package(cmake_modules REQUIRED)
@@ -60,7 +59,7 @@ generate_dynamic_reconfigure_options(
 catkin_package(
   INCLUDE_DIRS include ${Eigen_INCLUDE_DIRS} ${OCTOMAP_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS}
   LIBRARIES aeplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${OpenMP_LIBS}
-  CATKIN_DEPENDS message_runtime roscpp geometry_msgs visualization_msgs tf kdtree
+  CATKIN_DEPENDS message_runtime roscpp geometry_msgs visualization_msgs tf
 )
 
 include_directories(

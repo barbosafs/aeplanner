@@ -13,8 +13,6 @@
 
 #include <eigen3/Eigen/Dense>
 
-#include <kdtree/kdtree.h>
-
 #include <aeplanner/data_structures.h>
 #include <aeplanner/param.h>
 #include <aeplanner_msgs/Reevaluate.h>
@@ -35,6 +33,10 @@
 
 namespace aeplanner
 {
+typedef std::pair<point, std::shared_ptr<RRTNode>> value;
+typedef boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>
+    value_rtree;
+
 class AEPlanner
 {
 private:
@@ -48,13 +50,10 @@ private:
   bool current_state_initialized_;
 
   // Keep track of the best node and its score
-  RRTNode* best_node_;
-  RRTNode* best_branch_root_;
+  std::shared_ptr<RRTNode> best_node_;
+  std::shared_ptr<RRTNode> best_branch_root_;
 
   std::shared_ptr<octomap::OcTree> ot_;
-
-  // kd tree for finding nearest neighbours
-  kdtree* kd_tree_;
 
   // Subscribers
   ros::Subscriber octomap_sub_;
@@ -95,44 +94,36 @@ private:
                   aeplanner_msgs::Reevaluate::Response& res);
 
   // ---------------- Initialization ----------------
-  RRTNode* initialize(const Eigen::Vector4d& current_state);
-  void initializeKDTreeWithPreviousBestBranch(RRTNode* root);
-  void reevaluatePotentialInformationGainRecursive(RRTNode* node);
+  std::shared_ptr<RRTNode> initialize(value_rtree* rtree,
+                                      const Eigen::Vector4d& current_state);
+  void initializeKDTreeWithPreviousBestBranch(value_rtree* rtree,
+                                              std::shared_ptr<RRTNode> root);
+  void reevaluatePotentialInformationGainRecursive(std::shared_ptr<RRTNode> node);
 
   // ---------------- Expand RRT Tree ----------------
-  void
-  expandRRT(std::shared_ptr<octomap::OcTree> ot,
-            std::shared_ptr<
-                boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
-                rtree,
-            const Eigen::Vector4d& current_state);
+  void expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* rtree,
+                 std::shared_ptr<point_rtree> stl_rtree,
+                 const Eigen::Vector4d& current_state);
 
   Eigen::Vector4d sampleNewPoint();
   bool isInsideBoundaries(Eigen::Vector4d point);
   bool isInsideBoundaries(Eigen::Vector3d point);
   bool isInsideBoundaries(octomap::point3d point);
-  bool collisionLine(
-      std::shared_ptr<
-          boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
-          rtree,
-      Eigen::Vector4d p1, Eigen::Vector4d p2, double r);
-  RRTNode* chooseParent(
-      std::shared_ptr<
-          boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
-          rtree,
-      RRTNode* node, double l);
-  void rewire(std::shared_ptr<
-                  boost::geometry::index::rtree<value, boost::geometry::index::rstar<16>>>
-                  rtree,
-              kdtree* kd_tree, RRTNode* new_node, double l, double r, double r_os);
+  bool collisionLine(std::shared_ptr<point_rtree> stl_rtree, Eigen::Vector4d p1,
+                     Eigen::Vector4d p2, double r);
+  std::shared_ptr<RRTNode> chooseParent(const value_rtree& rtree,
+                                        std::shared_ptr<point_rtree> stl_rtree,
+                                        std::shared_ptr<RRTNode> node, double l);
+  void rewire(const value_rtree& rtree, std::shared_ptr<point_rtree> stl_rtree,
+              std::shared_ptr<RRTNode> new_node, double l, double r, double r_os);
   Eigen::Vector4d restrictDistance(Eigen::Vector4d nearest, Eigen::Vector4d new_pos);
 
-  std::pair<double, double> getGain(RRTNode* node);
+  std::pair<double, double> getGain(std::shared_ptr<RRTNode> node);
   std::pair<double, double> gainCubature(Eigen::Vector4d state);
 
   // ---------------- Helpers ----------------
   //
-  void publishEvaluatedNodesRecursive(RRTNode* node);
+  void publishEvaluatedNodesRecursive(std::shared_ptr<RRTNode> node);
 
   geometry_msgs::Pose vecToPose(Eigen::Vector4d state);
 
