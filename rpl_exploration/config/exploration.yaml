@@ -5,7 +5,7 @@ raycast/dr:     0.1
 raycast/dphi:   10
 raycast/dtheta: 10
 
-system/bbx/r: 0.5
+system/bbx/r: 0.4
 system/bbx/overshoot: 0.1
 
 aep/gain/r_min: 0
@@ -13,10 +13,10 @@ aep/gain/r_max: 5
 aep/gain/zero: 1
 aep/gain/lambda: 0.75
 aep/gain/sigma_thresh: 0.2
-aep/tree/extension_range: 1.5
+aep/tree/extension_range: 0.75
 aep/tree/max_sampling_radius: 10
-aep/tree/initial_iterations: 300
-aep/tree/cutoff_iterations: 300
+aep/tree/initial_iterations: 400
+aep/tree/cutoff_iterations: 400
 
 rrt/min_nodes: 100
 

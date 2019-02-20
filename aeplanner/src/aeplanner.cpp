@@ -72,7 +72,7 @@ void AEPlanner::execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal)
       current_state[2] + params_.max_sampling_radius + ltl_max_search_distance_);
 
   std::shared_ptr<point_rtree> stl_rtree =
-      std::make_shared<point_rtree>(RRTNode::getRtree(ot, min, max));
+      std::make_shared<point_rtree>(getRtree(ot, min, max));
 
   value_rtree rtree;
 
@@ -118,6 +118,23 @@ void AEPlanner::execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal)
     best_branch_root_ = NULL;
   }
   as_.setSucceeded(result);
+}
+
+point_rtree AEPlanner::getRtree(std::shared_ptr<octomap::OcTree> ot, octomap::point3d min,
+                                octomap::point3d max)
+{
+  point_rtree rtree;
+  for (octomap::OcTree::leaf_bbx_iterator it = ot->begin_leafs_bbx(min, max),
+                                          it_end = ot->end_leafs_bbx();
+       it != it_end; ++it)
+  {
+    if (it->getLogOdds() > 0)
+    {
+      rtree.insert(point(it.getX(), it.getY(), it.getZ()));
+    }
+  }
+
+  return rtree;
 }
 
 std::shared_ptr<RRTNode> AEPlanner::initialize(value_rtree* rtree,
@@ -297,16 +314,11 @@ std::shared_ptr<RRTNode> AEPlanner::chooseParent(const value_rtree& rtree,
   // TODO: How many neighbours to look for?
   std::vector<value> nearest;
   rtree.query(boost::geometry::index::nearest(
-                  point(node->state_[0], node->state_[1], node->state_[2]), 5),
+                  point(node->state_[0], node->state_[1], node->state_[2]), 15),
               std::back_inserter(nearest));
 
-  if (nearest.empty())
-  {
-    return NULL;
-  }
-
   // TODO: Check if correct
-  std::shared_ptr<RRTNode> best_node(NULL);
+  std::shared_ptr<RRTNode> best_node;
   double best_cost;
 
   for (value item : nearest)
@@ -335,7 +347,7 @@ void AEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree> st
   std::vector<value> nearest;
   rtree.query(
       boost::geometry::index::nearest(
-          point(new_node->state_[0], new_node->state_[1], new_node->state_[2]), 5),
+          point(new_node->state_[0], new_node->state_[1], new_node->state_[2]), 15),
       std::back_inserter(nearest));
 
   Eigen::Vector3d p1(new_node->state_[0], new_node->state_[1], new_node->state_[2]);
@@ -345,9 +357,10 @@ void AEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree> st
                      ltl_min_distance_active_, ltl_max_distance_active_,
                      ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_);
 
-  for (value item : nearest)
+#pragma omp parallel for
+  for (size_t i = 0; i < nearest.size(); ++i)
   {
-    std::shared_ptr<RRTNode> current_node = item.second;
+    std::shared_ptr<RRTNode> current_node = nearest[i].second;
     Eigen::Vector3d p2(current_node->state_[0], current_node->state_[1],
                        current_node->state_[2]);
 
@@ -902,7 +915,7 @@ void AEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
                          position[2] + ltl_max_search_distance_);
 
     std::shared_ptr<point_rtree> rtree =
-        std::make_shared<point_rtree>(RRTNode::getRtree(ot, min, max));
+        std::make_shared<point_rtree>(getRtree(ot, min, max));
 
     std::pair<double, double> closest_distance =
         RRTNode::getDistanceToClosestOccupiedBounded(

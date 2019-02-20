@@ -89,6 +89,9 @@ private:
 
   double max_sampling_radius_squared_;
 
+  point_rtree getRtree(std::shared_ptr<octomap::OcTree> ot, octomap::point3d min,
+                       octomap::point3d max);
+
   // Service server callback
   bool reevaluate(aeplanner_msgs::Reevaluate::Request& req,
                   aeplanner_msgs::Reevaluate::Response& res);

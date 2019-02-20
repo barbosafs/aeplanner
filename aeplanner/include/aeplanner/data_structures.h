@@ -175,23 +175,6 @@ public:
     return cost_;
   }
 
-  static point_rtree getRtree(std::shared_ptr<octomap::OcTree> ot, octomap::point3d min,
-                              octomap::point3d max)
-  {
-    point_rtree rtree;
-    for (octomap::OcTree::leaf_bbx_iterator it = ot->begin_leafs_bbx(min, max),
-                                            it_end = ot->end_leafs_bbx();
-         it != it_end; ++it)
-    {
-      if (it->getLogOdds() > 0)
-      {
-        rtree.insert(point(it.getX(), it.getY(), it.getZ()));
-      }
-    }
-
-    return rtree;
-  }
-
   static std::pair<double, double> getDistanceToClosestOccupiedBounded(
       std::shared_ptr<point_rtree> rtree, Eigen::Vector3d start, Eigen::Vector3d end,
       double max_search_distance, double radius, double step_size)
