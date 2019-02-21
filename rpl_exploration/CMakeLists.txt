@@ -20,6 +20,7 @@ find_package(catkin REQUIRED COMPONENTS
   genmsg 
   actionlib_msgs 
   actionlib
+  mavros_msgs
 )
 
 find_package(octomap REQUIRED)

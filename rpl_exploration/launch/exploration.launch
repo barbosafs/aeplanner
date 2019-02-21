@@ -30,12 +30,65 @@ name="camera_manager" output="screen"/>
   <node pkg="rpl_exploration" type="image_maxing.py" name="image_maxing" output="screen" />
 
   <node pkg="stl_evaluation" type="stl_evaluation_node" name="std_evaluation_node" output="screen">
+    <!-- AEP apartment -->
+    <!--
     <param name="bbx_min_x" value="-10.0" />
-    <param name="bbx_min_y" value="-2.5" />
-    <param name="bbx_min_z" value="0" />
-    <param name="bbx_max_x" value="24" />
-    <param name="bbx_max_y" value="31" />
+    <param name="bbx_min_y" value="-5.0" />
+    <param name="bbx_min_z" value="0.3" />
+    <param name="bbx_max_x" value="10" />
+    <param name="bbx_max_y" value="5" />
     <param name="bbx_max_z" value="2.5" />
-    <param name="volume_scaler" value="4.0" />
+    <param name="volume_scaler" value="1.0" />
+    -->
+    <!-- AEP office -->
+    <!-- 
+    <param name="bbx_min_x" value="-27.0" />
+    <param name="bbx_min_y" value="-3.0" />
+    <param name="bbx_min_z" value="0.3" />
+    <param name="bbx_max_x" value="3" />
+    <param name="bbx_max_y" value="17" />
+    <param name="bbx_max_z" value="2.5" />
+    <param name="volume_scaler" value="1.0" />
+     -->
+     <!-- Garage -->
+     <!--
+    <param name="bbx_min_x" value="-10.0" />
+    <param name="bbx_min_y" value="-3.0" />
+    <param name="bbx_min_z" value="0.3" />
+    <param name="bbx_max_x" value="24" />
+    <param name="bbx_max_y" value="30.5" />
+    <param name="bbx_max_z" value="2.5" />
+    <param name="volume_scaler" value="1.0" />
+    -->
+    <!-- Office -->
+    <!--
+    <param name="bbx_min_x" value="-2.0" />
+    <param name="bbx_min_y" value="-2.0" />
+    <param name="bbx_min_z" value="0.3" />
+    <param name="bbx_max_x" value="8" />
+    <param name="bbx_max_y" value="10.0" />
+    <param name="bbx_max_z" value="2.5" />
+    <param name="volume_scaler" value="1.0" />
+    -->
+    <!-- Power plant -->
+    <!--
+    <param name="bbx_min_x" value="-1.0" />
+    <param name="bbx_min_y" value="-24.0" />
+    <param name="bbx_min_z" value="-4.0" />
+    <param name="bbx_max_x" value="30" />
+    <param name="bbx_max_y" value="7.0" />
+    <param name="bbx_max_z" value="26" />
+    <param name="volume_scaler" value="1.0" />
+    -->
+    <!-- Triangle small -->
+    <!---->
+    <param name="bbx_min_x" value="-10.0" />
+    <param name="bbx_min_y" value="-3.0" />
+    <param name="bbx_min_z" value="0.3" />
+    <param name="bbx_max_x" value="83.3" />
+    <param name="bbx_max_y" value="90.3" />
+    <param name="bbx_max_z" value="2.5" />
+    <param name="volume_scaler" value="1.0" />
+    <!---->
   </node>
 </launch>

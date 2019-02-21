@@ -20,6 +20,9 @@
 
 #include <eigen3/Eigen/Eigen>
 
+#include <mavros_msgs/CommandBool.h>
+#include <mavros_msgs/SetMode.h>
+
 int main(int argc, char** argv)
 {
   ros::init(argc, argv, "exploration");
@@ -98,6 +101,26 @@ int main(int argc, char** argv)
   // allows the planning of initial paths.
   ROS_INFO("Starting the planner: Performing initialization motion");
   geometry_msgs::PoseStamped last_pose;
+
+  ros::ServiceClient arm_client = nh.serviceClient<mavros_msgs::CommandBool>("/mavros/"
+                                                                             "cmd/"
+                                                                             "arming");
+  ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("/mavros/"
+                                                                              "set_mode");
+  mavros_msgs::CommandBool arm_srv;
+  arm_srv.request.value = true;
+
+  mavros_msgs::SetMode set_mode_srv;
+  set_mode_srv.request.base_mode = 0;
+  set_mode_srv.request.custom_mode = "offboard";
+
+  ros::Publisher setpoint_pub =
+      nh.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_position/local", 10);
+  setpoint_pub.publish(geometry_msgs::PoseStamped());
+  setpoint_pub.publish(geometry_msgs::PoseStamped());
+  setpoint_pub.publish(geometry_msgs::PoseStamped());
+  arm_client.call(arm_srv);
+  set_mode_client.call(set_mode_srv);
 
   for (int i = 0; i < initial_positions.size(); ++i)
   {

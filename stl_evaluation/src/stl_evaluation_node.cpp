@@ -140,7 +140,7 @@ int main(int argc, char** argv)
   ros::Subscriber ltl_sub = nh.subscribe("/aeplanner/ltl_stats", 1000, &LTLStatsCallback);
   ros::Subscriber pose_sub =
       nh.subscribe("/mavros/local_position/pose", 1000, &poseCallback);
-  ros::Subscriber map_sub = nh.subscribe("/aeplanner/octomap_full", 1000, &mapCallback);
+  ros::Subscriber map_sub = nh.subscribe("/aeplanner/octomap_full", 1, &mapCallback);
 
   volume_pub = nh.advertise<aeplanner_msgs::Volume>("/stl_evaluation/volume", 1000);
 
