@@ -6,13 +6,15 @@ visualization_msgs::MarkerArray createRRTMarkerArray(
     std::shared_ptr<RRTNode> root, std::shared_ptr<point_rtree> rtree,
     Eigen::Vector4d current_state, double ltl_lambda, double min_distance,
     double max_distance, bool min_distance_active, bool max_distance_active,
-    double max_search_distance, double radius, double step_size, double lambda)
+    double max_search_distance, double radius, double step_size,
+    std::map<int, std::pair<geometry_msgs::Pose, double>> routers, bool routers_active,
+    double lambda)
 {
   int id = 0;
   visualization_msgs::MarkerArray marker_array;
   recurse(root, &marker_array, &id, rtree, current_state, ltl_lambda, min_distance,
           max_distance, min_distance_active, max_distance_active, max_search_distance,
-          radius, step_size, lambda);
+          radius, step_size, routers, routers_active, lambda);
 
   return marker_array;
 }
@@ -20,7 +22,9 @@ void recurse(std::shared_ptr<RRTNode> node, visualization_msgs::MarkerArray* mar
              int* id, std::shared_ptr<point_rtree> rtree, Eigen::Vector4d current_state,
              double ltl_lambda, double min_distance, double max_distance,
              bool min_distance_active, bool max_distance_active,
-             double max_search_distance, double radius, double step_size, double lambda)
+             double max_search_distance, double radius, double step_size,
+             std::map<int, std::pair<geometry_msgs::Pose, double>> routers,
+             bool routers_active, double lambda)
 {
   for (std::vector<std::shared_ptr<RRTNode>>::iterator child_it = node->children_.begin();
        child_it != node->children_.end(); ++child_it)
@@ -29,11 +33,11 @@ void recurse(std::shared_ptr<RRTNode> node, visualization_msgs::MarkerArray* mar
     if (child)
       recurse(child, marker_array, id, rtree, current_state, ltl_lambda, min_distance,
               max_distance, min_distance_active, max_distance_active, max_search_distance,
-              radius, step_size, lambda);
+              radius, step_size, routers, routers_active, lambda);
     marker_array->markers.push_back(createEdgeMarker(
         child, (*id), "map", rtree, current_state, ltl_lambda, min_distance, max_distance,
         min_distance_active, max_distance_active, max_search_distance, radius, step_size,
-        lambda));
+        routers, routers_active, lambda));
     marker_array->markers.push_back(createNodeMarker(child, (*id)++, "map"));
   }
 
@@ -78,6 +82,7 @@ visualization_msgs::Marker createEdgeMarker(
     std::shared_ptr<point_rtree> rtree, Eigen::Vector4d current_state, double ltl_lambda,
     double min_distance, double max_distance, bool min_distance_active,
     bool max_distance_active, double max_search_distance, double radius, double step_size,
+    std::map<int, std::pair<geometry_msgs::Pose, double>> routers, bool routers_active,
     double lambda)
 {
   visualization_msgs::Marker a;
@@ -105,10 +110,10 @@ visualization_msgs::Marker createEdgeMarker(
   a.scale.x = dir.norm();
   a.scale.y = 0.03;
   a.scale.z = 0.03;
-  a.color.r =
-      node->score(rtree, ltl_lambda, min_distance, max_distance, min_distance_active,
-                  max_distance_active, max_search_distance, radius, step_size, lambda) /
-      60.0;
+  a.color.r = node->score(rtree, ltl_lambda, min_distance, max_distance,
+                          min_distance_active, max_distance_active, max_search_distance,
+                          radius, step_size, routers, routers_active, lambda) /
+              60.0;
   a.color.g = 0.0;
   a.color.b = 1.0;
   a.color.a = 1.0;

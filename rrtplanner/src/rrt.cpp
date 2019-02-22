@@ -137,7 +137,7 @@ std::shared_ptr<RrtNode> Rrt::chooseParent(const value_rtree& rtree, Eigen::Vect
 {
   // TODO: How many neighbours to look for?
   std::vector<value> nearest;
-  rtree.query(boost::geometry::index::nearest(point(node[0], node[1], node[2]), 5),
+  rtree.query(boost::geometry::index::nearest(point(node[0], node[1], node[2]), 15),
               std::back_inserter(nearest));
 
   // TODO: Check if correct

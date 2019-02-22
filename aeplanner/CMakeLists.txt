@@ -5,6 +5,7 @@ add_compile_options(-std=c++11)
 
 find_package(catkin REQUIRED COMPONENTS
   aeplanner_msgs
+  dd_gazebo_plugins
   roscpp
   geometry_msgs
   visualization_msgs

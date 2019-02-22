@@ -12,6 +12,8 @@
 #include <boost/geometry.hpp>
 #include <boost/geometry/index/rtree.hpp>
 
+#include <geometry_msgs/Pose.h>
+
 namespace aeplanner
 {
 // Rtree
@@ -112,12 +114,14 @@ public:
       distance_gain = max_distance - closest_distance.second;
     }
 
-    return std::exp(-ltl_lambda * distance_gain);
+    return distance_gain;
   }
 
   double score(std::shared_ptr<point_rtree> rtree, double ltl_lambda, double min_distance,
                double max_distance, bool min_distance_active, bool max_distance_active,
-               double max_search_distance, double radius, double step_size, double lambda)
+               double max_search_distance, double radius, double step_size,
+               std::map<int, std::pair<geometry_msgs::Pose, double>> routers,
+               bool routers_active, double lambda)
   {
     if (score_rtree_ && parent_ == score_parent_)
     {
@@ -137,18 +141,30 @@ public:
                                            min_distance_active, max_distance_active,
                                            max_search_distance, radius, step_size);
 
-    score_ =
-        this->parent_->score(rtree, ltl_lambda, min_distance, max_distance,
-                             min_distance_active, max_distance_active,
-                             max_search_distance, radius, step_size, lambda) +
-        this->gain_ *
-            exp(-lambda * (this->distance(this->parent_) * std::fmax(distance_gain, 1)));
+    double max_router_difference = distance_gain;
+    if (routers_active)
+    {
+      max_router_difference = getMaxRouterDifference(routers, step_size);
+    }
+
+    score_ = this->parent_->score(rtree, ltl_lambda, min_distance, max_distance,
+                                  min_distance_active, max_distance_active,
+                                  max_search_distance, radius, step_size, routers,
+                                  routers_active, lambda) +
+             this->gain_ *
+                 exp(-lambda *
+                     (this->distance(this->parent_) *
+                      std::fmax(std::exp(-ltl_lambda *
+                                         std::min(distance_gain, max_router_difference)),
+                                1)));
     return score_;
   }
 
   double cost(std::shared_ptr<point_rtree> rtree, double ltl_lambda, double min_distance,
               double max_distance, bool min_distance_active, bool max_distance_active,
-              double max_search_distance, double radius, double step_size)
+              double max_search_distance, double radius, double step_size,
+              std::map<int, std::pair<geometry_msgs::Pose, double>> routers,
+              bool routers_active)
   {
     if (cost_rtree_ && parent_ == cost_parent_)
     {
@@ -168,11 +184,102 @@ public:
                                            min_distance_active, max_distance_active,
                                            max_search_distance, radius, step_size);
 
-    cost_ = (this->distance(this->parent_) * std::fmax(distance_gain, 1)) +
-            this->parent_->cost(rtree, ltl_lambda, min_distance, max_distance,
-                                min_distance_active, max_distance_active,
-                                max_search_distance, radius, step_size);
+    double max_router_difference = distance_gain;
+    if (routers_active)
+    {
+      max_router_difference = getMaxRouterDifference(routers, step_size);
+    }
+
+    cost_ =
+        (this->distance(this->parent_) *
+         std::fmax(std::exp(-ltl_lambda * std::min(distance_gain, max_router_difference)),
+                   1)) +
+        this->parent_->cost(rtree, ltl_lambda, min_distance, max_distance,
+                            min_distance_active, max_distance_active, max_search_distance,
+                            radius, step_size, routers, routers_active);
     return cost_;
+  }
+
+  double getMaxRouterDifference(
+      std::map<int, std::pair<geometry_msgs::Pose, double>> routers, double step_size)
+  {
+    Eigen::Vector3d start;
+    if (parent_)
+    {
+      start[0] = parent_->state_[0];
+      start[1] = parent_->state_[1];
+      start[2] = parent_->state_[2];
+    }
+    else
+    {
+      start[0] = state_[0];
+      start[1] = state_[1];
+      start[2] = state_[2];
+    }
+    Eigen::Vector3d end(state_[0], state_[1], state_[2]);
+
+    double max_router_difference = -10000000;
+
+    for (auto it = routers.begin(); it != routers.end(); ++it)
+    {
+      Eigen::Vector3d point(it->second.first.position.x, it->second.first.position.y,
+                            it->second.first.position.z);
+
+      std::pair<double, double> distance =
+          getDistanceToPositionAlongLine(start, end, point, step_size);
+
+      max_router_difference =
+          std::max(max_router_difference, it->second.second - distance.second);
+    }
+
+    return max_router_difference;
+  }
+
+  static double getMaxRouterDifference(
+      Eigen::Vector3d start, Eigen::Vector3d end,
+      std::map<int, std::pair<geometry_msgs::Pose, double>> routers, double step_size)
+  {
+    double max_router_difference = 10000000;
+
+    for (auto it = routers.begin(); it != routers.end(); ++it)
+    {
+      Eigen::Vector3d point(it->second.first.position.x, it->second.first.position.y,
+                            it->second.first.position.z);
+
+      std::pair<double, double> distance =
+          getDistanceToPositionAlongLine(start, end, point, step_size);
+
+      max_router_difference = std::min(max_router_difference, distance.second);
+    }
+
+    return max_router_difference;
+  }
+
+  static std::pair<double, double> getDistanceToPositionAlongLine(Eigen::Vector3d start,
+                                                                  Eigen::Vector3d end,
+                                                                  Eigen::Vector3d point,
+                                                                  double step_size)
+  {
+    double current_distance = (point - start).norm();
+
+    std::pair<double, double> closest =
+        std::make_pair(current_distance, current_distance);
+
+    for (double i = step_size; i < 1.0; i += step_size)
+    {
+      Eigen::Vector3d next_point = start + ((i / (end - start).norm()) * (end - start));
+      current_distance = (point - next_point).norm();
+
+      closest.first = std::min(closest.first, current_distance);
+      closest.second = std::max(closest.second, current_distance);
+    }
+
+    current_distance = (point - end).norm();
+
+    closest.first = std::min(closest.first, current_distance);
+    closest.second = std::max(closest.second, current_distance);
+
+    return closest;
   }
 
   static std::pair<double, double> getDistanceToClosestOccupiedBounded(
@@ -197,7 +304,7 @@ public:
       // Interpolate between start and end with step size
       for (double i = step_size; i < 1.0; i += step_size)
       {
-        points.push_back(start + ((step_size / (end - start).norm()) * (end - start)));
+        points.push_back(start + ((i / (end - start).norm()) * (end - start)));
       }
       points.push_back(end);
     }

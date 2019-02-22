@@ -51,7 +51,6 @@ name="camera_manager" output="screen"/>
     <param name="volume_scaler" value="1.0" />
      -->
      <!-- Garage -->
-     <!--
     <param name="bbx_min_x" value="-10.0" />
     <param name="bbx_min_y" value="-3.0" />
     <param name="bbx_min_z" value="0.3" />
@@ -59,7 +58,6 @@ name="camera_manager" output="screen"/>
     <param name="bbx_max_y" value="30.5" />
     <param name="bbx_max_z" value="2.5" />
     <param name="volume_scaler" value="1.0" />
-    -->
     <!-- Office -->
     <!--
     <param name="bbx_min_x" value="-2.0" />
@@ -81,7 +79,7 @@ name="camera_manager" output="screen"/>
     <param name="volume_scaler" value="1.0" />
     -->
     <!-- Triangle small -->
-    <!---->
+    <!--
     <param name="bbx_min_x" value="-10.0" />
     <param name="bbx_min_y" value="-3.0" />
     <param name="bbx_min_z" value="0.3" />
@@ -89,6 +87,6 @@ name="camera_manager" output="screen"/>
     <param name="bbx_max_y" value="90.3" />
     <param name="bbx_max_z" value="2.5" />
     <param name="volume_scaler" value="1.0" />
-    <!---->
+    -->
   </node>
 </launch>

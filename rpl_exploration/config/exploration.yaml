@@ -13,7 +13,7 @@ aep/gain/r_max: 7
 aep/gain/zero: 2
 aep/gain/lambda: 0.5
 aep/gain/sigma_thresh: 0.2
-aep/tree/extension_range: 3.0
+aep/tree/extension_range: 1.0
 aep/tree/max_sampling_radius: 30
 aep/tree/initial_iterations: 100
 aep/tree/cutoff_iterations: 400
@@ -29,8 +29,8 @@ rrt/min_nodes: 100
 # boundary/min: [ -27.0,  -3.0, 0.3]
 # boundary/max: [ 3.0,   17.0,  2.5]
 # Garage
-# boundary/min: [ -10.0,  -3.0, 0.3]
-# boundary/max: [ 24.0,   30.5,  2.5]
+boundary/min: [ -10.0,  -3.0, 0.3]
+boundary/max: [ 24.0,   30.5,  2.5]
 # Office
 # boundary/min: [ -2.0,  -2.0, 0.3]
 # boundary/max: [ 8.0,   10.0,  2.5]
@@ -38,8 +38,8 @@ rrt/min_nodes: 100
 # boundary/min: [ -1.0,  -24.0, -4.0]
 # boundary/max: [ 30.0,   7.0,  26.0]
 # Triangle small
-boundary/min: [ -10.0,  -3.0, 0.3]
-boundary/max: [ 83.3,   90.3,  2.5]
+# boundary/min: [ -10.0,  -3.0, 0.3]
+# boundary/max: [ 83.3,   90.3,  2.5]
 
 visualize_rays: false
 visualize_tree: true

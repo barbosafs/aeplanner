@@ -4,6 +4,7 @@
 #include <ros/ros.h>
 
 #include <geometry_msgs/PoseArray.h>
+#include <geometry_msgs/Pose.h>
 #include <geometry_msgs/PoseStamped.h>
 
 #include <tf/transform_listener.h>
@@ -30,6 +31,8 @@
 #include <aeplanner/LTLConfig.h>
 #include <dynamic_reconfigure/server.h>
 #include <nav_msgs/Path.h>
+
+#include <dd_gazebo_plugins/Router.h>
 
 namespace aeplanner
 {
@@ -58,6 +61,7 @@ private:
   // Subscribers
   ros::Subscriber octomap_sub_;
   ros::Subscriber agent_pose_sub_;
+  ros::Subscriber router_sub_;
 
   // Publishers
   ros::Publisher rrt_marker_pub_;
@@ -74,6 +78,7 @@ private:
   double ltl_max_distance_;
   bool ltl_min_distance_active_;
   bool ltl_max_distance_active_;
+  bool ltl_routers_active_;
   dynamic_reconfigure::Server<aeplanner::LTLConfig> ltl_cs_;
   dynamic_reconfigure::Server<aeplanner::LTLConfig>::CallbackType ltl_f_;
   nav_msgs::Path ltl_path_;
@@ -86,6 +91,7 @@ private:
   double ltl_max_search_distance_;
   std::vector<std::pair<octomap::point3d, double>> ltl_search_distances_;
   double ltl_step_size_;
+  std::map<int, std::pair<geometry_msgs::Pose, double>> ltl_routers_;
 
   double max_sampling_radius_squared_;
 
@@ -141,6 +147,8 @@ private:
   // double getDistanceToClosestOccupiedBounded(std::shared_ptr<octomap::OcTree> ot,
   //                                            Eigen::Vector4d current_state);
   void configCallback(aeplanner::LTLConfig& config, uint32_t level);
+
+  void routerCallback(const dd_gazebo_plugins::Router::ConstPtr& msg);
 
 public:
   AEPlanner(const ros::NodeHandle& nh);

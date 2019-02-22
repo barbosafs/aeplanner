@@ -16,6 +16,7 @@ AEPlanner::AEPlanner(const ros::NodeHandle& nh)
   , as_(nh_, "make_plan", boost::bind(&AEPlanner::execute, this, _1), false)
   , octomap_sub_(nh_.subscribe("octomap", 1, &AEPlanner::octomapCallback, this))
   , agent_pose_sub_(nh_.subscribe("agent_pose", 1, &AEPlanner::agentPoseCallback, this))
+  , router_sub_(nh_.subscribe("/router", 10, &AEPlanner::routerCallback, this))
   , rrt_marker_pub_(nh_.advertise<visualization_msgs::MarkerArray>("rrtree", 1000))
   , gain_pub_(nh_.advertise<aeplanner_msgs::Node>("gain_node", 1000))
   , gp_query_client_(nh_.serviceClient<aeplanner_msgs::Query>("gp_query_server"))
@@ -84,7 +85,7 @@ void AEPlanner::execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal)
       root->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
                   ltl_min_distance_active_, ltl_max_distance_active_,
                   ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                  params_.lambda) < params_.zero_gain)
+                  ltl_routers_, ltl_routers_active_, params_.lambda) < params_.zero_gain)
   {
     expandRRT(ot, &rtree, stl_rtree, current_state);
   }
@@ -100,7 +101,8 @@ void AEPlanner::execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal)
   rrt_marker_pub_.publish(createRRTMarkerArray(
       root, stl_rtree, current_state, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
       ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
-      params_.bounding_radius, ltl_step_size_, params_.lambda));
+      params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_,
+      params_.lambda));
   ROS_WARN("publishRecursive");
   publishEvaluatedNodesRecursive(root);
 
@@ -109,6 +111,7 @@ void AEPlanner::execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal)
   if (best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
                         ltl_min_distance_active_, ltl_max_distance_active_,
                         ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
+                        ltl_routers_, ltl_routers_active_,
                         params_.lambda) > params_.zero_gain)
     result.is_clear = true;
   else
@@ -208,7 +211,8 @@ void AEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* rtre
          best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
                            ltl_min_distance_active_, ltl_max_distance_active_,
                            ltl_max_search_distance_, params_.bounding_radius,
-                           ltl_step_size_, params_.lambda) < params_.zero_gain)) and
+                           ltl_step_size_, ltl_routers_, ltl_routers_active_,
+                           params_.lambda) < params_.zero_gain)) and
        ros::ok();
        ++n)
   {
@@ -278,11 +282,12 @@ void AEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* rtre
         new_node->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
                         ltl_min_distance_active_, ltl_max_distance_active_,
                         ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                        params_.lambda) >
+                        ltl_routers_, ltl_routers_active_, params_.lambda) >
             best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_,
                               ltl_max_distance_, ltl_min_distance_active_,
                               ltl_max_distance_active_, ltl_max_search_distance_,
-                              params_.bounding_radius, ltl_step_size_, params_.lambda))
+                              params_.bounding_radius, ltl_step_size_, ltl_routers_,
+                              ltl_routers_active_, params_.lambda))
       best_node_ = new_node;
 
     ROS_DEBUG_STREAM("iteration Done!");
@@ -328,7 +333,7 @@ std::shared_ptr<RRTNode> AEPlanner::chooseParent(const value_rtree& rtree,
     double current_cost = current_node->cost(
         stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
         ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
-        params_.bounding_radius, ltl_step_size_);
+        params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_);
 
     if (!best_node || current_cost < best_cost)
     {
@@ -352,10 +357,10 @@ void AEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree> st
 
   Eigen::Vector3d p1(new_node->state_[0], new_node->state_[1], new_node->state_[2]);
 
-  double new_cost =
-      new_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                     ltl_min_distance_active_, ltl_max_distance_active_,
-                     ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_);
+  double new_cost = new_node->cost(
+      stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+      ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
+      params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_);
 
 #pragma omp parallel for
   for (size_t i = 0; i < nearest.size(); ++i)
@@ -367,7 +372,8 @@ void AEPlanner::rewire(const value_rtree& rtree, std::shared_ptr<point_rtree> st
     if (current_node->cost(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
                            ltl_min_distance_active_, ltl_max_distance_active_,
                            ltl_max_search_distance_, params_.bounding_radius,
-                           ltl_step_size_) > new_cost + (p1 - p2).norm())
+                           ltl_step_size_, ltl_routers_,
+                           ltl_routers_active_) > new_cost + (p1 - p2).norm())
     {
       if (!collisionLine(stl_rtree, new_node->state_, current_node->state_, r))
       {
@@ -943,6 +949,9 @@ void AEPlanner::agentPoseCallback(const geometry_msgs::PoseStamped& msg)
 
     ltl_stats.mean_closest_distance = ltl_mean_closest_distance_;
 
+    ltl_stats.closest_router_distance =
+        RRTNode::getMaxRouterDifference(position, position, ltl_routers_, ltl_step_size_);
+
     ltl_stats_pub_.publish(ltl_stats);
   }
 }
@@ -1110,9 +1119,15 @@ void AEPlanner::configCallback(aeplanner::LTLConfig& config, uint32_t level)
   ltl_max_distance_ = config.max_distance;
   ltl_min_distance_active_ = config.min_distance_active;
   ltl_max_distance_active_ = config.max_distance_active;
+  ltl_routers_active_ = config.routers_active;
   ltl_dist_add_path_ = config.distance_add_path;
   ltl_max_search_distance_ = config.max_search_distance;
   ltl_step_size_ = config.step_size;
+}
+
+void AEPlanner::routerCallback(const dd_gazebo_plugins::Router::ConstPtr& msg)
+{
+  ltl_routers_[msg->id] = std::make_pair(msg->pose, msg->range);
 }
 
 }  // namespace aeplanner
