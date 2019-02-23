@@ -48,6 +48,23 @@ switch env
         
         axis([-28 4 -4 18])
         pbaspect([1 1 1])
+        
+        case 'aep_apartment'
+            outer_walls = [-10 -5;
+                -10, 5;
+                10, 5;
+                10, -5;
+                -10, -5
+                ];
+
+            figure()
+            hold on
+            plot(outer_walls(:,1), outer_walls(:,2), "k", 'LineWidth', 0.15)
+            plot([0, 0],[-5, -2], "k", 'LineWidth', 0.15)
+            plot([-4, 4],[-2, -2], "k", 'LineWidth', 0.15)
+            plot([-7, -7],[-2, 5], "k", 'LineWidth', 0.15)
+            plot([7, 7, 0],[5, 2, 2], "k", 'LineWidth', 0.15)
+            axis([-11 11 -11 11])
 end
 end
 
