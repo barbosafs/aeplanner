@@ -9,6 +9,7 @@ project(aeplanner_msgs)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   geometry_msgs
+  message_generation
   nav_msgs
   std_msgs
 )

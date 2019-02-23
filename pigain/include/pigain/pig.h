@@ -116,7 +116,7 @@ private:
 
   visualization_msgs::Marker pointToMarker(unsigned int id, Eigen::Vector3d point, double v = 0, double a = 0);
 
-  visualization_msgs::Marker nodeToMarker(unsigned int id, const Node& node);
+  visualization_msgs::Marker nodeToMarker(unsigned int id, const Node node);
 };
 }  // namespace pig
 

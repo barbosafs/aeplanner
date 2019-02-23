@@ -1,6 +1,8 @@
 <?xml version="1.0" ?>
 <launch>
-  <arg name="param_file" default="$(find rpl_exploration)/config/exploration.yaml" />
+  <arg name="path" default="aep_office/stl" />
+
+  <arg name="param_file" default="$(find rpl_exploration)/config/$(arg path).yaml" />
 
 
   <group ns="aeplanner">
@@ -29,7 +31,8 @@ name="camera_manager" output="screen"/>
 
   <node pkg="rpl_exploration" type="image_maxing.py" name="image_maxing" output="screen" />
 
-  <node pkg="stl_evaluation" type="stl_evaluation_node" name="std_evaluation_node" output="screen">
+  <node pkg="stl_evaluation" type="stl_evaluation_node" name="std_evaluation_node" output="screen" required="true">
+    <rosparam command="load" file="$(arg param_file)" />
     <!-- AEP apartment -->
     <!--
     <param name="bbx_min_x" value="-10.0" />
@@ -51,6 +54,7 @@ name="camera_manager" output="screen"/>
     <param name="volume_scaler" value="1.0" />
      -->
      <!-- Garage -->
+     <!--
     <param name="bbx_min_x" value="-10.0" />
     <param name="bbx_min_y" value="-3.0" />
     <param name="bbx_min_z" value="0.3" />
@@ -58,6 +62,7 @@ name="camera_manager" output="screen"/>
     <param name="bbx_max_y" value="30.5" />
     <param name="bbx_max_z" value="2.5" />
     <param name="volume_scaler" value="1.0" />
+    -->
     <!-- Office -->
     <!--
     <param name="bbx_min_x" value="-2.0" />
@@ -89,4 +94,7 @@ name="camera_manager" output="screen"/>
     <param name="volume_scaler" value="1.0" />
     -->
   </node>
+
+  <!-- <node pkg="rosbag" type="record" name="rosbag" output="screen" args="-a -x /camera/(.*)|/virtual_camera/(.*) -o $(find stl_evaluation)/data/$(arg path)"/> -->
+  <node pkg="rosbag" type="record" name="rosbag" output="screen" args="-o $(find stl_evaluation)/data/$(arg path) /aeplanner/free_cells_vis_array /aeplanner/ltl_path /aeplanner/occupied_cells_vis_array /aeplanner/pig_markers /aeplanner/rrt_path /aeplanner/rrtree /aeplanner/ltl_stats /stl_evaluation/volume /mavros/setpoint_position/local /mavros/local_position/pose"/>
 </launch>

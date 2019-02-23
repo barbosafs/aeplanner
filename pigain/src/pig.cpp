@@ -139,7 +139,7 @@ void PIG::poseCallback(const geometry_msgs::PoseStamped::ConstPtr& msg)
 
 void PIG::evaluateCallback(const ros::TimerEvent& event)
 {
-  if (mean_pub_.getNumSubscribers() == 0 && sigma_pub_.getNumSubscribers() == 0)
+  if (true || (mean_pub_.getNumSubscribers() == 0 && sigma_pub_.getNumSubscribers() == 0))
   {
     return;
   }
@@ -287,7 +287,7 @@ visualization_msgs::Marker PIG::pointToMarker(unsigned int id, Eigen::Vector3d p
   return marker;
 }
 
-visualization_msgs::Marker PIG::nodeToMarker(unsigned int id, const Node& node)
+visualization_msgs::Marker PIG::nodeToMarker(unsigned int id, const Node node)
 {
   visualization_msgs::Marker marker;
   marker.header.frame_id = "map";
