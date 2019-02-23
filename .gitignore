@@ -1,5 +1,5 @@
 *.pyc
 *.csv
 .vscode/
-stl_evaluation/data/
+stl_evaluation/data/*
 !stl_evaluation/data/*.m
