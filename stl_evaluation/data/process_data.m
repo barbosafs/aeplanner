@@ -1,10 +1,10 @@
 clear all; close all; clc;
 %%
-filename = 'map.csv';
+filename = 'stl_0_map.txt';
 map = csvread(filename,1,0); %time, total volume, current volume
 time_map = map(:,1) - map(1,1);
 figure()
-plot(time_map,map(:,3),"r:", 'LineWidth',2); grid on
+plot(time_map,map(:,3),"r:", time_map, map(:,2), "b -.", 'LineWidth',2); grid on
 xlabel('time ($s$)','Interpreter','latex'); 
 ylabel('$m^3$','Interpreter','latex');
 set(gca,'FontSize',16,'Fontname','Timesnewroman');
@@ -12,7 +12,7 @@ set(gca,'FontSize',16,'Fontname','Timesnewroman');
 % set(l,'Interpreter','Latex','Fontsize',16,'Fontname','Timesnewroman');
 
 %%
-filename = 'pose.csv';
+filename = 'stl_0_pose.txt';
 pose = csvread(filename,1,0); %time, x, y, z, yaw
 %Ploting 2D
 figure()
@@ -22,6 +22,8 @@ ylabel('$y$','Interpreter','latex');
 set(gca,'FontSize',16,'Fontname','Timesnewroman');
 % l = legend(p1,{'$x_1$','$x_2$'});
 % set(l,'Interpreter','Latex','Fontsize',16,'Fontname','Timesnewroman');
+hold on
+plotEnv('aep_office');
 
 %Ploting 3D
 figure
@@ -32,7 +34,7 @@ zlabel('$z$','Interpreter','latex');
 set(gca,'FontSize',16,'Fontname','Timesnewroman');
 
 %%
-filename = 'stats.csv';
+filename = 'stl_0_stats.txt';
 stats = csvread(filename,1,0); %time, min, max, current, mean
 time = stats(:,1) - stats(1,1);
 figure()
