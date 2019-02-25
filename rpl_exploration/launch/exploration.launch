@@ -1,6 +1,6 @@
 <?xml version="1.0" ?>
 <launch>
-  <arg name="path" default="aep_office/stl" />
+  <arg name="path" default="power_plant/stl" />
 
   <arg name="param_file" default="$(find rpl_exploration)/config/$(arg path).yaml" />
 
@@ -12,7 +12,11 @@
     <include file="$(find pigain)/launch/pig_cpp.launch"/>
     <include file="$(find rpl_exploration)/launch/fly_to.launch"/>
     <include file="$(find rpl_exploration)/launch/octomap_server.launch"/>
-    <include file="$(find rrtplanner)/launch/rrtplanner.launch"/>
+    <include file="$(find rrtplanner)/launch/rrtplanner.launch">
+      <arg name="path" value="$(arg path)" />
+      <arg name="param_file" value="$(arg param_file)" />
+    </include>
+
 
     <node name="rpl_exploration" pkg="rpl_exploration" type="rpl_exploration" output="screen" />
     <rosparam command="load" file="$(arg param_file)" />
@@ -97,5 +101,5 @@ name="camera_manager" output="screen"/>
 
   <!-- <node pkg="rosbag" type="record" name="rosbag" output="screen" args="-a -x /camera/(.*)|/virtual_camera/(.*) -o $(find stl_evaluation)/data/$(arg path)"/> -->
   <!-- <node pkg="rosbag" type="record" name="rosbag" output="screen" args="-o $(find stl_evaluation)/data/$(arg path) /aeplanner/free_cells_vis_array /aeplanner/ltl_path /aeplanner/occupied_cells_vis_array /aeplanner/pig_markers /aeplanner/rrt_path /aeplanner/rrtree /aeplanner/ltl_stats /stl_evaluation/volume /mavros/setpoint_position/local /mavros/local_position/pose"/> -->
-  <node pkg="rosbag" type="record" name="rosbag" output="screen" args="-o $(find stl_evaluation)/data/$(arg path) /virtual_camera/depth/points /aeplanner/ltl_path /aeplanner/occupied_cells_vis_array /aeplanner/pig_markers /aeplanner/rrt_path /aeplanner/rrtree /aeplanner/ltl_stats /stl_evaluation/volume /mavros/setpoint_position/local /mavros/local_position/pose /tf /tf_static"/>
+  <!-- <node pkg="rosbag" type="record" name="rosbag" output="screen" args="-o $(find stl_evaluation)/bags/$(arg path) /aeplanner/ltl_path /aeplanner/occupied_cells_vis_array /aeplanner/pig_markers /aeplanner/rrt_path /aeplanner/rrtree /aeplanner/ltl_stats /stl_evaluation/volume /mavros/setpoint_position/local /mavros/local_position/pose /tf /tf_static"/> -->
 </launch>

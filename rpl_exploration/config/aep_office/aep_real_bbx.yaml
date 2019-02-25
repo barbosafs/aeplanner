@@ -1,6 +1,6 @@
-name: "office/aep"
+name: "aep_office/aep_real_bbx"
 volume_complete: 1.0
-time_limit: 300
+time_limit: 900
 
 camera/horizontal_fov: 115.0
 camera/vertical_fov: 60.0
@@ -9,7 +9,7 @@ raycast/dr:     0.1
 raycast/dphi:   10
 raycast/dtheta: 10
 
-system/bbx/r: 0.75
+system/bbx/r: 0.4
 system/bbx/overshoot: 0.25
 
 aep/gain/r_min: 0
@@ -34,8 +34,8 @@ world_frame: "map"
 
 # bounding box: necessary to limit the simulation 
 # scenario (smaller than actual gazebo scenario)
-boundary/min: [ -2.0,  -2.0, 0.2]
-boundary/max: [ 8.0,   10.0,  2.5]
+boundary/min: [ -27.0,  -3.0, 0.2]
+boundary/max: [ 3.0,   17.0,  2.5]
 
 lambda: 5.0
 min_distance: 1.0

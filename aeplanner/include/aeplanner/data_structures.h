@@ -319,7 +319,7 @@ public:
     {
       Eigen::Vector3d point(hits[i].get<0>(), hits[i].get<1>(), hits[i].get<2>());
 
-      if (point[2] < std::min(start[2], end[2]) - 0.1 ||
+      if (point[2] < std::min(start[2], end[2]) ||
           point[2] > std::max(start[2], end[2]) + 0.1)
       {
         continue;

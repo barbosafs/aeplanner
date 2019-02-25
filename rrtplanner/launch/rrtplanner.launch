@@ -1,6 +1,9 @@
 <?xml version="1.0" ?>
 <launch>
+  <arg name="path" default="" />
+  <arg name="param_file" default="$(find rpl_exploration)/config/$(arg path).yaml" />
   <node name="rrtplanner_node" pkg="rrtplanner" type="rrtplanner_node" output="screen">
     <remap from="octomap" to="octomap_full"/>
+    <rosparam command="load" file="$(arg param_file)" />
   </node>
 </launch>

@@ -23,10 +23,13 @@ ros::Publisher volume_pub;
 double volume_scaler;
 
 double volume_complete;
+double time_limit;
 
 bool stats_done;
 bool pose_done;
 bool map_done;
+
+ros::Time start;
 
 void LTLStatsCallback(const aeplanner_msgs::LTLStats::ConstPtr& stats)
 {
@@ -42,9 +45,21 @@ void LTLStatsCallback(const aeplanner_msgs::LTLStats::ConstPtr& stats)
     return;
   }
 
+  if (start.is_zero())
+  {
+    start = ros::Time(stats->header.stamp);
+  }
+
+  if ((ros::Time::now() - start).toSec() > time_limit)
+  {
+    stats_file.close();
+    stats_done = true;
+    return;
+  }
+
   if (stats_file.is_open())
   {
-    stats_file << stats->header.stamp << ", ";
+    stats_file << (stats->header.stamp - start).toSec() << ", ";
     stats_file << stats->ltl_min_distance << ", ";
     stats_file << stats->ltl_max_distance << ", ";
     stats_file << stats->current_closest_distance << ", ";
@@ -68,9 +83,21 @@ void poseCallback(const geometry_msgs::PoseStamped::ConstPtr& pose)
     return;
   }
 
+  if (start.is_zero())
+  {
+    start = ros::Time(pose->header.stamp);
+  }
+
+  if ((ros::Time::now() - start).toSec() > time_limit)
+  {
+    pose_file.close();
+    pose_done = true;
+    return;
+  }
+
   if (pose_file.is_open())
   {
-    pose_file << pose->header.stamp << ", ";
+    pose_file << (pose->header.stamp - start).toSec() << ", ";
     pose_file << pose->pose.position.x << ", ";
     pose_file << pose->pose.position.y << ", ";
     pose_file << pose->pose.position.z << ", ";
@@ -93,6 +120,18 @@ void mapCallback(const octomap_msgs::Octomap::ConstPtr& map)
     return;
   }
 
+  if (start.is_zero())
+  {
+    start = ros::Time(map->header.stamp);
+  }
+
+  if ((ros::Time::now() - start).toSec() > time_limit)
+  {
+    map_file.close();
+    map_done = true;
+    return;
+  }
+
   if (map_file.is_open())
   {
     octomap::OcTree* ot = (octomap::OcTree*)octomap_msgs::msgToMap(*map);
@@ -103,7 +142,8 @@ void mapCallback(const octomap_msgs::Octomap::ConstPtr& map)
     // ot->expand();
 
     // double current_volume = 0;
-    // for (auto it = ot->begin_leafs_bbx(bbx_min, bbx_max), it_end = ot->end_leafs_bbx(); it != it_end; ++it)
+    // for (auto it = ot->begin_leafs_bbx(bbx_min, bbx_max), it_end = ot->end_leafs_bbx();
+    // it != it_end; ++it)
     // {
     //   current_volume += cell_size;
     // }
@@ -137,7 +177,7 @@ void mapCallback(const octomap_msgs::Octomap::ConstPtr& map)
 
     delete ot;
 
-    map_file << map->header.stamp << ", ";
+    map_file << (map->header.stamp - start).toSec() << ", ";
     map_file << total_volume << ", ";
     map_file << current_volume << ", ";
     map_file << (current_volume / total_volume) << "\n";
@@ -170,14 +210,16 @@ int main(int argc, char** argv)
 
   std::string package_path = ros::package::getPath("stl_evaluation");
 
-  boost::filesystem::path p(package_path + "/data/" + name);
-  boost::filesystem::create_directory(p.parent_path());
-
   int postfix = 0;
-  while (boost::filesystem::exists(package_path + "/data/" + name + "_" + std::to_string(postfix) + "_stats.txt"))
+  while (boost::filesystem::exists(package_path + "/data/" + name + "_" +
+                                   std::to_string(postfix)))
   {
     ++postfix;
   }
+
+  boost::filesystem::path p(package_path + "/data/" + name + "_" +
+                            std::to_string(postfix));
+  boost::filesystem::create_directories(p);
 
   std::vector<double> boundary_min;
   std::vector<double> boundary_max;
@@ -194,63 +236,87 @@ int main(int argc, char** argv)
   pose_done = false;
   map_done = false;
   volume_complete = nh_priv.param<double>("volume_complete", 0.0);
+  time_limit = nh_priv.param<double>("time_limit", 0.0);
 
   std::ofstream info_file;
-  info_file.open(package_path + "/data/" + name + "_" + std::to_string(postfix) + "_info.txt");
+  info_file.open(package_path + "/data/" + name + "_" + std::to_string(postfix) + "/" +
+                 "info.txt");
   info_file << "name: " << nh_priv.param<std::string>("name", "") << "\n";
   info_file << "volume_complete: " << volume_complete << "\n";
+  info_file << "time_limit: " << time_limit << "\n";
   info_file << "\n";
-  info_file << "camera/horizontal_fov: " << nh_priv.param<double>("camera/horizontal_fov", 0.0) << "\n";
-  info_file << "camera/vertical_fov: " << nh_priv.param<double>("camera/vertical_fov", 0.0) << "\n";
+  info_file << "camera/horizontal_fov: "
+            << nh_priv.param<double>("camera/horizontal_fov", 0.0) << "\n";
+  info_file << "camera/vertical_fov: "
+            << nh_priv.param<double>("camera/vertical_fov", 0.0) << "\n";
   info_file << "\n";
   info_file << "raycast/dr: " << nh_priv.param<double>("raycast/dr", 0.0) << "\n";
   info_file << "raycast/dphi: " << nh_priv.param<double>("raycast/dphi", 0.0) << "\n";
   info_file << "raycast/dtheta: " << nh_priv.param<double>("raycast/dtheta", 0.0) << "\n";
   info_file << "\n";
   info_file << "system/bbx/r: " << nh_priv.param<double>("system/bbx/r", 0.0) << "\n";
-  info_file << "system/bbx/overshoot: " << nh_priv.param<double>("system/bbx/overshoot", 0.0) << "\n";
+  info_file << "system/bbx/overshoot: "
+            << nh_priv.param<double>("system/bbx/overshoot", 0.0) << "\n";
   info_file << "\n";
   info_file << "aep/gain/r_min: " << nh_priv.param<double>("aep/gain/r_min", 0.0) << "\n";
   info_file << "aep/gain/r_max: " << nh_priv.param<double>("aep/gain/r_max", 0.0) << "\n";
   info_file << "aep/gain/zero: " << nh_priv.param<double>("aep/gain/zero", 0.0) << "\n";
-  info_file << "aep/gain/lambda: " << nh_priv.param<double>("aep/gain/lambda", 0.0) << "\n";
-  info_file << "aep/gain/sigma_thresh: " << nh_priv.param<double>("aep/gain/sigma_thresh", 0.0) << "\n";
-  info_file << "aep/tree/extension_range: " << nh_priv.param<double>("aep/tree/extension_range", 0.0) << "\n";
-  info_file << "aep/tree/max_sampling_radius: " << nh_priv.param<double>("aep/tree/max_sampling_radius", 0.0) << "\n";
-  info_file << "aep/tree/initial_iterations: " << nh_priv.param<double>("aep/tree/initial_iterations", 0.0) << "\n";
-  info_file << "aep/tree/cutoff_iterations: " << nh_priv.param<double>("aep/tree/cutoff_iterations", 0.0) << "\n";
+  info_file << "aep/gain/lambda: " << nh_priv.param<double>("aep/gain/lambda", 0.0)
+            << "\n";
+  info_file << "aep/gain/sigma_thresh: "
+            << nh_priv.param<double>("aep/gain/sigma_thresh", 0.0) << "\n";
+  info_file << "aep/tree/extension_range: "
+            << nh_priv.param<double>("aep/tree/extension_range", 0.0) << "\n";
+  info_file << "aep/tree/max_sampling_radius: "
+            << nh_priv.param<double>("aep/tree/max_sampling_radius", 0.0) << "\n";
+  info_file << "aep/tree/initial_iterations: "
+            << nh_priv.param<double>("aep/tree/initial_iterations", 0.0) << "\n";
+  info_file << "aep/tree/cutoff_iterations: "
+            << nh_priv.param<double>("aep/tree/cutoff_iterations", 0.0) << "\n";
   info_file << "\n";
   info_file << "rrt/min_nodes: " << nh_priv.param<double>("rrt/min_nodes", 0.0) << "\n";
+  info_file << "rrt/max_nodes: " << nh_priv.param<double>("rrt/max_nodes", 0.0) << "\n";
   info_file << "\n";
   info_file << "visualize_rays: " << nh_priv.param<bool>("visualize_rays", false) << "\n";
   info_file << "visualize_tree: " << nh_priv.param<bool>("visualize_tree", false) << "\n";
-  info_file << "visualize_exploration_area: " << nh_priv.param<bool>("visualize_exploration_area", false) << "\n";
+  info_file << "visualize_exploration_area: "
+            << nh_priv.param<bool>("visualize_exploration_area", false) << "\n";
   info_file << "\n";
   info_file << "robot_frame: " << nh_priv.param<std::string>("robot_frame", "") << "\n";
   info_file << "world_frame: " << nh_priv.param<std::string>("world_frame", "") << "\n";
   info_file << "\n";
-  info_file << "boundary/min: [ " << boundary_min[0] << ", " << boundary_min[1] << ", " << boundary_min[2] << " ]\n";
-  info_file << "boundary/max: [ " << boundary_max[0] << ", " << boundary_max[1] << ", " << boundary_max[2] << " ]\n";
+  info_file << "boundary/min: [ " << boundary_min[0] << ", " << boundary_min[1] << ", "
+            << boundary_min[2] << " ]\n";
+  info_file << "boundary/max: [ " << boundary_max[0] << ", " << boundary_max[1] << ", "
+            << boundary_max[2] << " ]\n";
   info_file << "\n";
   info_file << "# STL STUFF BELOW\n";
   info_file << "lambda: " << nh_priv.param<double>("lambda", 0.0) << "\n";
   info_file << "min_distance: " << nh_priv.param<double>("min_distance", 0.0) << "\n";
   info_file << "max_distance: " << nh_priv.param<double>("max_distance", 0.0) << "\n";
-  info_file << "min_distance_active: " << nh_priv.param<bool>("min_distance_active", false) << "\n";
-  info_file << "max_distance_active: " << nh_priv.param<bool>("max_distance_active", false) << "\n";
+  info_file << "min_distance_active: "
+            << nh_priv.param<bool>("min_distance_active", false) << "\n";
+  info_file << "max_distance_active: "
+            << nh_priv.param<bool>("max_distance_active", false) << "\n";
   info_file << "routers_active: " << nh_priv.param<bool>("routers_active", false) << "\n";
-  info_file << "distance_add_path: " << nh_priv.param<double>("distance_add_path", 0.0) << "\n";
-  info_file << "max_search_distance: " << nh_priv.param<double>("max_search_distance", 0.0) << "\n";
+  info_file << "distance_add_path: " << nh_priv.param<double>("distance_add_path", 0.0)
+            << "\n";
+  info_file << "max_search_distance: "
+            << nh_priv.param<double>("max_search_distance", 0.0) << "\n";
   info_file << "step_size: " << nh_priv.param<double>("step_size", 0.0) << "\n";
   info_file.close();
 
-  stats_file.open(package_path + "/data/" + name + "_" + std::to_string(postfix) + "_stats.txt");
-  stats_file << "Stamp, Min, Max, Current closest distance, Mean closest distance, Current closest router distance\n";
+  stats_file.open(package_path + "/data/" + name + "_" + std::to_string(postfix) + "/" +
+                  "stats.txt");
+  stats_file << "Stamp, Min, Max, Current closest distance, Mean closest distance, "
+                "Current closest router distance\n";
 
-  pose_file.open(package_path + "/data/" + name + "_" + std::to_string(postfix) + "_pose.txt");
+  pose_file.open(package_path + "/data/" + name + "_" + std::to_string(postfix) + "/" +
+                 "pose.txt");
   pose_file << "Stamp, X, Y, Z, Yaw\n";
 
-  map_file.open(package_path + "/data/" + name + "_" + std::to_string(postfix) + "_map.txt");
+  map_file.open(package_path + "/data/" + name + "_" + std::to_string(postfix) + "/" +
+                "map.txt");
   map_file << "Stamp, Max volume, Current volume, Procentage\n";
 
   bbx_min.x() = boundary_min[0];
@@ -266,8 +332,11 @@ int main(int argc, char** argv)
   octomap::point3d temp = bbx_max - bbx_min;
   total_volume = temp.x() * temp.y() * temp.z();
 
+  start = ros::Time(0);
+
   ros::Subscriber ltl_sub = nh.subscribe("/aeplanner/ltl_stats", 1, &LTLStatsCallback);
-  ros::Subscriber pose_sub = nh.subscribe("/mavros/local_position/pose", 1, &poseCallback);
+  ros::Subscriber pose_sub =
+      nh.subscribe("/mavros/local_position/pose", 1, &poseCallback);
   ros::Subscriber map_sub = nh.subscribe("/aeplanner/octomap_full", 1, &mapCallback);
 
   volume_pub = nh.advertise<aeplanner_msgs::Volume>("/stl_evaluation/volume", 1);

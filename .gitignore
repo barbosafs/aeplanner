@@ -3,3 +3,4 @@
 .vscode/
 stl_evaluation/data/*
 !stl_evaluation/data/*.m
+stl_evaluation/bags/*

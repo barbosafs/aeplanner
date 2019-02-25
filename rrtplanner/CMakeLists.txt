@@ -9,6 +9,8 @@ add_compile_options(-std=c++11)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
   aeplanner_msgs
+  dd_gazebo_plugins
+  dynamic_reconfigure
   roscpp
   visualization_msgs
   message_generation
@@ -20,6 +22,13 @@ find_package(catkin REQUIRED COMPONENTS
 )
 find_package(octomap REQUIRED)
 find_package(Eigen3 REQUIRED)
+
+find_package(OpenMP REQUIRED)
+if(OPENMP_FOUND)
+  message(STATUS "OPENMP FOUND")
+  set(OpenMP_FLAGS ${OpenMP_CXX_FLAGS})  # or if you use C: ${OpenMP_C_FLAGS}
+  set(OpenMP_LIBS gomp)
+endif()
 
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
@@ -99,10 +108,9 @@ find_package(Eigen3 REQUIRED)
 ##     and list every .cfg file to be processed
 
 ## Generate dynamic reconfigure parameters in the 'cfg' folder
-# generate_dynamic_reconfigure_options(
-#   cfg/DynReconf1.cfg
-#   cfg/DynReconf2.cfg
-# )
+generate_dynamic_reconfigure_options(
+  cfg/LTL.cfg
+)
 
 ###################################
 ## catkin specific configuration ##
@@ -115,7 +123,7 @@ find_package(Eigen3 REQUIRED)
 ## DEPENDS: system dependencies of this project that dependent projects also need
 catkin_package(
   INCLUDE_DIRS include ${OCTOMAP_INCLUDE_DIRS} ${Eigen_INCLUDE_DIRS} ${catkin_INCLUDE_DIRS}
-  LIBRARIES rrtplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES}
+  LIBRARIES rrtplanner ${catkin_LIBRARIES} ${OCTOMAP_LIBRARIES} ${OpenMP_LIBS}
   CATKIN_DEPENDS message_runtime roscpp geometry_msgs visualization_msgs
 )
 
@@ -135,14 +143,17 @@ include_directories(
 #   src/${PROJECT_NAME}/rrtplanner.cpp
 # )
 add_library(rrtplanner src/rrt.cpp)
+target_compile_options(rrtplanner PRIVATE ${OpenMP_FLAGS})
 target_link_libraries(rrtplanner
   ${catkin_LIBRARIES}
   ${OCTOMAP_LIBRARIES}
+  ${OpenMP_LIBS}
 )
 add_dependencies(rrtplanner
   ${catkin_EXPORTED_TARGETS} 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
   rrtplanner_generate_messages_cpp
+  ${PROJECT_NAME}_gencfg
 )
 
 
@@ -156,14 +167,17 @@ add_dependencies(rrtplanner
 ## With catkin_make all packages are built within a single CMake context
 ## The recommended prefix ensures that target names across packages don't collide
 add_executable(rrtplanner_node src/rrtplanner_node.cpp src/rrt.cpp)
+target_compile_options(rrtplanner_node PRIVATE ${OpenMP_FLAGS})
 target_link_libraries(rrtplanner_node
   ${catkin_LIBRARIES}
   ${OCTOMAP_LIBRARIES}
+  ${OpenMP_LIBS}
 )
 add_dependencies(rrtplanner_node
   ${catkin_EXPORTED_TARGETS} 
   ${${PROJECT_NAME}_EXPORTED_TARGETS} 
   rrtplanner_generate_messages_cpp
+  ${PROJECT_NAME}_gencfg
 )
 
 

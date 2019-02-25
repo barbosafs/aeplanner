@@ -1,4 +1,6 @@
-name: "triangle_small/stl"
+name: "empty_room_big/aep"
+volume_complete: 0.99
+time_limit: 1800
 
 camera/horizontal_fov: 115.0
 camera/vertical_fov: 60.0
@@ -7,8 +9,8 @@ raycast/dr:     0.1
 raycast/dphi:   10
 raycast/dtheta: 10
 
-system/bbx/r: 0.4
-system/bbx/overshoot: 0.1
+system/bbx/r: 0.75
+system/bbx/overshoot: 0.25
 
 aep/gain/r_min: 0
 aep/gain/r_max: 7
@@ -21,6 +23,7 @@ aep/tree/initial_iterations: 100
 aep/tree/cutoff_iterations: 400
 
 rrt/min_nodes: 100
+rrt/max_nodes: 1000
 
 visualize_rays: false
 visualize_tree: true
@@ -31,15 +34,15 @@ world_frame: "map"
 
 # bounding box: necessary to limit the simulation 
 # scenario (smaller than actual gazebo scenario)
-boundary/min: [ -10.0,  -3.0, 0.3]
-boundary/max: [ 83.3,   90.3,  2.5]
+boundary/min: [ -38.0,  -2.0, 0.2]
+boundary/max: [ 2.0,    28,  2.5]
 
 lambda: 5.0
 min_distance: 1.0
 max_distance: 4.0
-min_distance_active: true
-max_distance_active: true
-routers_active: true
+min_distance_active: false
+max_distance_active: false
+routers_active: false
 distance_add_path: 0.1
-max_search_distance: 40.0
+max_search_distance: 20.0
 step_size: 0.1

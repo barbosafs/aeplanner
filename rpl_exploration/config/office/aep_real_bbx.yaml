@@ -1,4 +1,4 @@
-name: "office/aep"
+name: "office/aep_real_bbx"
 volume_complete: 1.0
 time_limit: 300
 
@@ -9,7 +9,7 @@ raycast/dr:     0.1
 raycast/dphi:   10
 raycast/dtheta: 10
 
-system/bbx/r: 0.75
+system/bbx/r: 0.4
 system/bbx/overshoot: 0.25
 
 aep/gain/r_min: 0
