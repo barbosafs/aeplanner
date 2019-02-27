@@ -72,6 +72,9 @@ private:
   ros::ServiceClient gp_query_client_;
   ros::ServiceServer reevaluate_server_;
 
+  // The RRT
+  std::shared_ptr<value_rtree> rtree_;
+
   // LTL
   double ltl_lambda_;
   double ltl_min_distance_;
@@ -103,14 +106,15 @@ private:
                   aeplanner_msgs::Reevaluate::Response& res);
 
   // ---------------- Initialization ----------------
-  std::shared_ptr<RRTNode> initialize(value_rtree* rtree,
+  std::shared_ptr<RRTNode> initialize(std::shared_ptr<value_rtree> rtree,
+                                      std::shared_ptr<point_rtree> stl_rtree,
                                       const Eigen::Vector4d& current_state);
-  void initializeKDTreeWithPreviousBestBranch(value_rtree* rtree,
+  void initializeKDTreeWithPreviousBestBranch(std::shared_ptr<value_rtree> rtree,
                                               std::shared_ptr<RRTNode> root);
   void reevaluatePotentialInformationGainRecursive(std::shared_ptr<RRTNode> node);
 
   // ---------------- Expand RRT Tree ----------------
-  void expandRRT(std::shared_ptr<octomap::OcTree> ot, value_rtree* rtree,
+  void expandRRT(std::shared_ptr<octomap::OcTree> ot, std::shared_ptr<value_rtree> rtree,
                  std::shared_ptr<point_rtree> stl_rtree,
                  const Eigen::Vector4d& current_state);
 
@@ -120,10 +124,10 @@ private:
   bool isInsideBoundaries(octomap::point3d point);
   bool collisionLine(std::shared_ptr<point_rtree> stl_rtree, Eigen::Vector4d p1,
                      Eigen::Vector4d p2, double r);
-  std::shared_ptr<RRTNode> chooseParent(const value_rtree& rtree,
+  std::shared_ptr<RRTNode> chooseParent(std::shared_ptr<value_rtree> rtree,
                                         std::shared_ptr<point_rtree> stl_rtree,
                                         std::shared_ptr<RRTNode> node, double l);
-  void rewire(const value_rtree& rtree, std::shared_ptr<point_rtree> stl_rtree,
+  void rewire(std::shared_ptr<value_rtree> rtree, std::shared_ptr<point_rtree> stl_rtree,
               std::shared_ptr<RRTNode> new_node, double l, double r, double r_os);
   Eigen::Vector4d restrictDistance(Eigen::Vector4d nearest, Eigen::Vector4d new_pos);
 

@@ -96,8 +96,7 @@ bool PIG::gpQueryCallback(aeplanner_msgs::Query::Request& req,
   x_star(0, 1) = req.point.y;
   x_star(0, 2) = req.point.z;
 
-  std::pair<double, double> gp_response =
-      gp(y, x, x_star, hyper_l_, hyper_sigma_f_, hyper_sigma_n_);
+  std::pair<double, double> gp_response = gp(y, x, x_star, 1, 1, 0.1);
 
   res.mu = gp_response.first;
   res.sigma = gp_response.second;
@@ -186,8 +185,7 @@ void PIG::evaluateCallback(const ros::TimerEvent& event)
     }
   }
 
-  std::pair<double, double> gp_response =
-      gp(y, x, x_star, hyper_l_, hyper_sigma_f_, hyper_sigma_n_);
+  std::pair<double, double> gp_response = gp(y, x, x_star, 1, 1, 0.1);
 
   visualization_msgs::MarkerArray mean_markers;
   visualization_msgs::MarkerArray sigma_markers;
