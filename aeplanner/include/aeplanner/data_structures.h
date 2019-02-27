@@ -45,30 +45,66 @@ public:
 
   std::shared_ptr<RRTNode> getCopyOfParentBranch()
   {
-    // TODO: FIX
-    std::shared_ptr<RRTNode> current_node = std::make_shared<RRTNode>(*this);
-    std::shared_ptr<RRTNode> new_node;
-    std::shared_ptr<RRTNode> new_child_node = NULL;
+    std::vector<std::shared_ptr<RRTNode>> nodes;
 
+    std::shared_ptr<RRTNode> current_node = std::make_shared<RRTNode>(*this);
+
+    std::shared_ptr<RRTNode> new_node;
     while (current_node)
     {
+      if (nodes.size() % 100 == 0)
+      {
+        ROS_INFO_STREAM(nodes.size());
+      }
       new_node = std::make_shared<RRTNode>();
       new_node->state_ = current_node->state_;
       new_node->gain_ = current_node->gain_;
       new_node->gain_explicitly_calculated_ = current_node->gain_explicitly_calculated_;
       new_node->parent_ = NULL;
 
-      if (new_child_node)
-      {
-        new_node->children_.push_back(new_child_node);
-        new_child_node->parent_ = new_node;
-      }
+      nodes.emplace_back(new_node);
 
       current_node = current_node->parent_;
-      new_child_node = new_node;
     }
 
-    return new_node;
+    ROS_INFO("Added all to vector");
+
+    current_node = nodes[nodes.size() - 1];
+
+    for (int i = nodes.size() - 2; i >= 0; --i)
+    {
+      current_node->children_.push_back(nodes[i]);
+
+      current_node = nodes[i];
+      current_node->parent_ = nodes[i + 1];
+    }
+
+    return nodes[nodes.size() - 1];
+
+    // // TODO: FIX
+    // std::shared_ptr<RRTNode> current_node = std::make_shared<RRTNode>(*this);
+    // std::shared_ptr<RRTNode> new_node;
+    // std::shared_ptr<RRTNode> new_child_node = NULL;
+
+    // while (current_node)
+    // {
+    //   new_node = std::make_shared<RRTNode>();
+    //   new_node->state_ = current_node->state_;
+    //   new_node->gain_ = current_node->gain_;
+    //   new_node->gain_explicitly_calculated_ =
+    //   current_node->gain_explicitly_calculated_; new_node->parent_ = NULL;
+
+    //   if (new_child_node)
+    //   {
+    //     new_node->children_.push_back(new_child_node);
+    //     new_child_node->parent_ = new_node;
+    //   }
+
+    //   current_node = current_node->parent_;
+    //   new_child_node = new_node;
+    // }
+
+    // return new_node;
   }
 
   double getDistanceGain(std::shared_ptr<point_rtree> rtree, double ltl_lambda,

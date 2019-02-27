@@ -76,7 +76,7 @@ void AEPlanner::execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal)
   std::shared_ptr<point_rtree> stl_rtree =
       std::make_shared<point_rtree>(getRtree(ot, min, max));
 
-  std::shared_ptr<value_rtree> rtree = rtree_;
+  std::shared_ptr<value_rtree> rtree = std::make_shared<value_rtree>();  // rtree_;
 
   ROS_WARN("Init");
   std::shared_ptr<RRTNode> root = initialize(rtree, stl_rtree, current_state);
@@ -89,7 +89,7 @@ void AEPlanner::execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal)
   //                 ltl_routers_, ltl_routers_active_, params_.lambda) <
   //                 params_.zero_gain)
   // {
-  expandRRT(ot, rtree, stl_rtree, current_state);
+  std::shared_ptr<RRTNode> best_node = expandRRT(ot, rtree, stl_rtree, current_state);
   // }
   // else
   // {
@@ -97,31 +97,33 @@ void AEPlanner::execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal)
   // }
 
   ROS_WARN("getCopyOfParent");
-  best_branch_root_ = best_node_->getCopyOfParentBranch();
+  std::shared_ptr<RRTNode> best_branch_root = best_node->getCopyOfParentBranch();
 
   ROS_WARN("createRRTMarker");
-  rrt_marker_pub_.publish(createRRTMarkerArray(
-      root, stl_rtree, current_state, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-      ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
-      params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_,
-      params_.lambda));
+  if (rrt_marker_pub_.getNumSubscribers() > 0)
+  {
+    rrt_marker_pub_.publish(createRRTMarkerArray(
+        root, stl_rtree, current_state, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+        ltl_min_distance_active_, ltl_max_distance_active_, ltl_max_search_distance_,
+        params_.bounding_radius, ltl_step_size_, ltl_routers_, ltl_routers_active_,
+        params_.lambda));
+  }
   ROS_WARN("publishRecursive");
   publishEvaluatedNodesRecursive(root);
 
   ROS_WARN("extractPose");
-  result.pose.pose = vecToPose(best_branch_root_->children_[0]->state_);
-  if (best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                        ltl_min_distance_active_, ltl_max_distance_active_,
-                        ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
-                        ltl_routers_, ltl_routers_active_,
-                        params_.lambda) > params_.zero_gain)
-    result.is_clear = true;
-  else
-  {
-    result.frontiers = getFrontiers();
-    result.is_clear = false;
-    best_branch_root_ = NULL;
-  }
+  result.pose.pose = vecToPose(best_branch_root->children_[0]->state_);
+  // if (best_node->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+  //                      ltl_min_distance_active_, ltl_max_distance_active_,
+  //                      ltl_max_search_distance_, params_.bounding_radius,
+  //                      ltl_step_size_, ltl_routers_, ltl_routers_active_,
+  //                      params_.lambda) > params_.zero_gain)
+  result.is_clear = true;
+  // else
+  // {
+  //   result.frontiers = getFrontiers();
+  //   result.is_clear = false;
+  // }
   as_.setSucceeded(result);
 }
 
@@ -147,23 +149,25 @@ std::shared_ptr<RRTNode> AEPlanner::initialize(std::shared_ptr<value_rtree> rtre
                                                const Eigen::Vector4d& current_state)
 {
   std::shared_ptr<RRTNode> root = std::make_shared<RRTNode>();
-  root = ;
   root->state_[0] = current_state[0];
   root->state_[1] = current_state[1];
   root->state_[2] = current_state[2];
+
   rtree->insert(
       std::make_pair(point(root->state_[0], root->state_[1], root->state_[2]), root));
 
-  if (!rtree->empty())
+  if (root_)
   {
-    std::shared_ptr<RRTNode> nearest =
-        chooseParent(rtree, stl_rtree, root, params_.extension_range);
+    root->children_.push_back(root_);
+    root_->parent_ = root;
 
-    rewire(rtree, stl_rtree, nearest, params_.extension_range, params_.bounding_radius,
+    rewire(rtree, stl_rtree, root_, params_.extension_range, params_.bounding_radius,
            params_.d_overshoot_);
   }
 
-  return root;
+  root_ = root;
+
+  return root_;
 }
 
 void AEPlanner::initializeKDTreeWithPreviousBestBranch(std::shared_ptr<value_rtree> rtree,
@@ -193,23 +197,15 @@ void AEPlanner::reevaluatePotentialInformationGainRecursive(std::shared_ptr<RRTN
   ROS_DEBUG_STREAM("Reevaluating done!!");
 }
 
-void AEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot,
-                          std::shared_ptr<value_rtree> rtree,
-                          std::shared_ptr<point_rtree> stl_rtree,
-                          const Eigen::Vector4d& current_state)
+std::shared_ptr<RRTNode> AEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot,
+                                              std::shared_ptr<value_rtree> rtree,
+                                              std::shared_ptr<point_rtree> stl_rtree,
+                                              const Eigen::Vector4d& current_state)
 {
+  std::shared_ptr<RRTNode> best_node;
   // Expand an RRT tree and calculate information gain in every node
   ROS_DEBUG_STREAM("Entering expanding RRT");
-  for (int n = 0;
-       (n < params_.init_iterations or
-        (n < params_.cutoff_iterations and
-         best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
-                           ltl_min_distance_active_, ltl_max_distance_active_,
-                           ltl_max_search_distance_, params_.bounding_radius,
-                           ltl_step_size_, ltl_routers_, ltl_routers_active_,
-                           params_.lambda) < params_.zero_gain)) and
-       ros::ok();
-       ++n)
+  for (int n = 0; n < params_.init_iterations and ros::ok(); ++n)
   {
     ROS_DEBUG_STREAM("In expand RRT iteration: " << n);
     std::shared_ptr<RRTNode> new_node = std::make_shared<RRTNode>();
@@ -258,8 +254,8 @@ void AEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot,
     nearest->children_.push_back(new_node);
 
     // rewire tree with new node
-    rewire(rtree, stl_rtree, nearest, params_.extension_range, params_.bounding_radius,
-           params_.d_overshoot_);
+    // rewire(rtree, stl_rtree, nearest, params_.extension_range, params_.bounding_radius,
+    //        params_.d_overshoot_);
 
     // Calculate potential information gain for new_node
     ROS_DEBUG_STREAM("Get gain");
@@ -273,20 +269,22 @@ void AEPlanner::expandRRT(std::shared_ptr<octomap::OcTree> ot,
     // Update best node
 
     ROS_DEBUG_STREAM("Update best node");
-    if (!best_node_ or
+    if (!best_node or
         new_node->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
                         ltl_min_distance_active_, ltl_max_distance_active_,
                         ltl_max_search_distance_, params_.bounding_radius, ltl_step_size_,
                         ltl_routers_, ltl_routers_active_, params_.lambda) >
-            best_node_->score(stl_rtree, ltl_lambda_, ltl_min_distance_,
-                              ltl_max_distance_, ltl_min_distance_active_,
-                              ltl_max_distance_active_, ltl_max_search_distance_,
-                              params_.bounding_radius, ltl_step_size_, ltl_routers_,
-                              ltl_routers_active_, params_.lambda))
-      best_node_ = new_node;
+            best_node->score(stl_rtree, ltl_lambda_, ltl_min_distance_, ltl_max_distance_,
+                             ltl_min_distance_active_, ltl_max_distance_active_,
+                             ltl_max_search_distance_, params_.bounding_radius,
+                             ltl_step_size_, ltl_routers_, ltl_routers_active_,
+                             params_.lambda))
+      best_node = new_node;
 
     ROS_DEBUG_STREAM("iteration Done!");
   }
+
+  return best_node;
 
   ROS_DEBUG_STREAM("expandRRT Done!");
 }

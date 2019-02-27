@@ -52,9 +52,11 @@ private:
   Eigen::Vector4d current_state_;
   bool current_state_initialized_;
 
+  // The RRT
+  std::shared_ptr<value_rtree> rtree_;
+
   // Keep track of the best node and its score
-  std::shared_ptr<RRTNode> best_node_;
-  std::shared_ptr<RRTNode> best_branch_root_;
+  std::shared_ptr<RRTNode> root_;
 
   std::shared_ptr<octomap::OcTree> ot_;
 
@@ -71,9 +73,6 @@ private:
   ros::ServiceClient best_node_client_;
   ros::ServiceClient gp_query_client_;
   ros::ServiceServer reevaluate_server_;
-
-  // The RRT
-  std::shared_ptr<value_rtree> rtree_;
 
   // LTL
   double ltl_lambda_;
@@ -114,9 +113,10 @@ private:
   void reevaluatePotentialInformationGainRecursive(std::shared_ptr<RRTNode> node);
 
   // ---------------- Expand RRT Tree ----------------
-  void expandRRT(std::shared_ptr<octomap::OcTree> ot, std::shared_ptr<value_rtree> rtree,
-                 std::shared_ptr<point_rtree> stl_rtree,
-                 const Eigen::Vector4d& current_state);
+  std::shared_ptr<RRTNode> expandRRT(std::shared_ptr<octomap::OcTree> ot,
+                                     std::shared_ptr<value_rtree> rtree,
+                                     std::shared_ptr<point_rtree> stl_rtree,
+                                     const Eigen::Vector4d& current_state);
 
   Eigen::Vector4d sampleNewPoint();
   bool isInsideBoundaries(Eigen::Vector4d point);
