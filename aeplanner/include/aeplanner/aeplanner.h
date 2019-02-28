@@ -34,6 +34,8 @@
 
 #include <dd_gazebo_plugins/Router.h>
 
+#include <aeplanner/stl_params.h>
+
 namespace aeplanner
 {
 typedef std::pair<point, std::shared_ptr<RRTNode>> value;
@@ -49,15 +51,18 @@ private:
   Params params_;
 
   // Current state of agent (x, y, z, yaw)
-  Eigen::Vector4d current_state_;
-  bool current_state_initialized_;
+  std::shared_ptr<Eigen::Vector4d> current_state_;
 
   // The RRT
   std::shared_ptr<value_rtree> rtree_;
 
-  // Keep track of the best node and its score
+  // Keep track of the root of the RRT
   std::shared_ptr<RRTNode> root_;
 
+  // Keep track of the best node
+  std::shared_ptr<RRTNode> best_node_;
+
+  // The map
   std::shared_ptr<octomap::OcTree> ot_;
 
   // Subscribers
@@ -74,29 +79,62 @@ private:
   ros::ServiceClient gp_query_client_;
   ros::ServiceServer reevaluate_server_;
 
-  // LTL
-  double ltl_lambda_;
-  double ltl_min_distance_;
-  double ltl_max_distance_;
-  bool ltl_min_distance_active_;
-  bool ltl_max_distance_active_;
-  bool ltl_routers_active_;
-  dynamic_reconfigure::Server<aeplanner::LTLConfig> ltl_cs_;
-  dynamic_reconfigure::Server<aeplanner::LTLConfig>::CallbackType ltl_f_;
-  nav_msgs::Path ltl_path_;
-  double ltl_dist_add_path_;
-  ros::Publisher ltl_path_pub_;
-  ros::Publisher ltl_stats_pub_;
-  int ltl_iterations_;
-  double ltl_mean_closest_distance_;
-  std::vector<double> ltl_closest_distance_;
-  double ltl_max_search_distance_;
-  std::vector<std::pair<octomap::point3d, double>> ltl_search_distances_;
-  double ltl_step_size_;
-  std::map<int, std::pair<geometry_msgs::Pose, double>> ltl_routers_;
+  // STL
+  dynamic_reconfigure::Server<aeplanner::LTLConfig> stl_cs_;
+  dynamic_reconfigure::Server<aeplanner::LTLConfig>::CallbackType stl_f_;
+  STLParams stl_params_;
 
   double max_sampling_radius_squared_;
 
+public:
+  AEPlanner(const ros::NodeHandle& nh);
+
+private:
+  void execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal);
+
+  std::shared_ptr<RRTNode> init(std::shared_ptr<value_rtree> rtree,
+                                std::shared_ptr<Eigen::Vector4d> current_state);
+
+  std::shared_ptr<RRTNode> expandRRT(std::shared_ptr<octomap::OcTree> ot,
+                                     std::shared_ptr<value_rtree> rtree,
+                                     std::shared_ptr<point_rtree> stl_rtree,
+                                     std::shared_ptr<Eigen::Vector4d> current_state);
+
+  Eigen::Vector4d sampleNewPoint();
+
+  std::shared_ptr<RRTNode> nearestNeighbour(std::shared_ptr<value_rtree> rtree,
+                                            std::shared_ptr<RRTNode> new_node);
+
+  std::vector<std::shared_ptr<RRTNode>> getNear(std::shared_ptr<value_rtree> rtree,
+                                                std::shared_ptr<RRTNode> new_node,
+                                                double l);
+
+  void insertNode(std::shared_ptr<value_rtree> rtree, std::shared_ptr<RRTNode> parent,
+                  std::shared_ptr<RRTNode> new_node);
+
+  std::shared_ptr<RRTNode> chooseParent(std::vector<std::shared_ptr<RRTNode>> near,
+                                        std::shared_ptr<point_rtree> stl_rtree,
+                                        std::shared_ptr<RRTNode> nearest_node,
+                                        std::shared_ptr<RRTNode> new_node);
+
+  void rewire(std::vector<std::shared_ptr<RRTNode>> near,
+              std::shared_ptr<point_rtree> stl_rtree,
+              std::shared_ptr<RRTNode> nearest_node, std::shared_ptr<RRTNode> new_node,
+              double r);
+
+  std::shared_ptr<RRTNode> getNextGoal(std::shared_ptr<RRTNode> node);
+
+  std::shared_ptr<RRTNode> updateRoot(std::shared_ptr<value_rtree> rtree,
+                                      std::shared_ptr<point_rtree> stl_rtree,
+                                      std::shared_ptr<RRTNode> current_root,
+                                      std::shared_ptr<RRTNode> new_root, double l,
+                                      double r, double r_os);
+
+  void octomapCallback(const octomap_msgs::Octomap& msg);
+
+  void agentPoseCallback(const geometry_msgs::PoseStamped& msg);
+
+private:
   point_rtree getRtree(std::shared_ptr<octomap::OcTree> ot, octomap::point3d min,
                        octomap::point3d max);
 
@@ -113,22 +151,12 @@ private:
   void reevaluatePotentialInformationGainRecursive(std::shared_ptr<RRTNode> node);
 
   // ---------------- Expand RRT Tree ----------------
-  std::shared_ptr<RRTNode> expandRRT(std::shared_ptr<octomap::OcTree> ot,
-                                     std::shared_ptr<value_rtree> rtree,
-                                     std::shared_ptr<point_rtree> stl_rtree,
-                                     const Eigen::Vector4d& current_state);
 
-  Eigen::Vector4d sampleNewPoint();
   bool isInsideBoundaries(Eigen::Vector4d point);
   bool isInsideBoundaries(Eigen::Vector3d point);
   bool isInsideBoundaries(octomap::point3d point);
   bool collisionLine(std::shared_ptr<point_rtree> stl_rtree, Eigen::Vector4d p1,
                      Eigen::Vector4d p2, double r);
-  std::shared_ptr<RRTNode> chooseParent(std::shared_ptr<value_rtree> rtree,
-                                        std::shared_ptr<point_rtree> stl_rtree,
-                                        std::shared_ptr<RRTNode> node, double l);
-  void rewire(std::shared_ptr<value_rtree> rtree, std::shared_ptr<point_rtree> stl_rtree,
-              std::shared_ptr<RRTNode> new_node, double l, double r, double r_os);
   Eigen::Vector4d restrictDistance(Eigen::Vector4d nearest, Eigen::Vector4d new_pos);
 
   std::pair<double, double> getGain(std::shared_ptr<RRTNode> node);
@@ -153,14 +181,6 @@ private:
   void configCallback(aeplanner::LTLConfig& config, uint32_t level);
 
   void routerCallback(const dd_gazebo_plugins::Router::ConstPtr& msg);
-
-public:
-  AEPlanner(const ros::NodeHandle& nh);
-
-  void execute(const aeplanner_msgs::aeplannerGoalConstPtr& goal);
-
-  void octomapCallback(const octomap_msgs::Octomap& msg);
-  void agentPoseCallback(const geometry_msgs::PoseStamped& msg);
 };
 
 }  // namespace aeplanner

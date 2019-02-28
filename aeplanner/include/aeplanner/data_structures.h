@@ -14,6 +14,8 @@
 
 #include <geometry_msgs/Pose.h>
 
+#include <aeplanner/stl_params.h>
+
 namespace aeplanner
 {
 // Rtree
@@ -52,10 +54,6 @@ public:
     std::shared_ptr<RRTNode> new_node;
     while (current_node)
     {
-      if (nodes.size() % 100 == 0)
-      {
-        ROS_INFO_STREAM(nodes.size());
-      }
       new_node = std::make_shared<RRTNode>();
       new_node->state_ = current_node->state_;
       new_node->gain_ = current_node->gain_;
@@ -66,8 +64,6 @@ public:
 
       current_node = current_node->parent_;
     }
-
-    ROS_INFO("Added all to vector");
 
     current_node = nodes[nodes.size() - 1];
 
@@ -80,39 +76,12 @@ public:
     }
 
     return nodes[nodes.size() - 1];
-
-    // // TODO: FIX
-    // std::shared_ptr<RRTNode> current_node = std::make_shared<RRTNode>(*this);
-    // std::shared_ptr<RRTNode> new_node;
-    // std::shared_ptr<RRTNode> new_child_node = NULL;
-
-    // while (current_node)
-    // {
-    //   new_node = std::make_shared<RRTNode>();
-    //   new_node->state_ = current_node->state_;
-    //   new_node->gain_ = current_node->gain_;
-    //   new_node->gain_explicitly_calculated_ =
-    //   current_node->gain_explicitly_calculated_; new_node->parent_ = NULL;
-
-    //   if (new_child_node)
-    //   {
-    //     new_node->children_.push_back(new_child_node);
-    //     new_child_node->parent_ = new_node;
-    //   }
-
-    //   current_node = current_node->parent_;
-    //   new_child_node = new_node;
-    // }
-
-    // return new_node;
   }
 
-  double getDistanceGain(std::shared_ptr<point_rtree> rtree, double ltl_lambda,
-                         double min_distance, double max_distance,
-                         bool min_distance_active, bool max_distance_active,
-                         double max_search_distance, double radius, double step_size)
+  double getDistanceGain(std::shared_ptr<point_rtree> rtree, double radius,
+                         const STLParams& stl_params)
   {
-    if (!min_distance_active && !max_distance_active)
+    if (!stl_params.min_distance_active && !stl_params.max_distance_active)
     {
       return 1;
     }
@@ -133,76 +102,66 @@ public:
     Eigen::Vector3d end(state_[0], state_[1], state_[2]);
 
     std::pair<double, double> closest_distance = getDistanceToClosestOccupiedBounded(
-        rtree, start, end, max_search_distance, radius, step_size);
+        rtree, start, end, stl_params.max_search_distance, radius, stl_params.step_size);
 
     double distance_gain = 0;
-    if (min_distance_active && max_distance_active)
+    if (stl_params.min_distance_active && stl_params.max_distance_active)
     {
-      distance_gain = std::min(closest_distance.first - min_distance,
-                               max_distance - closest_distance.second);
+      distance_gain = std::min(closest_distance.first - stl_params.min_distance,
+                               stl_params.max_distance - closest_distance.second);
     }
-    else if (min_distance_active)
+    else if (stl_params.min_distance_active)
     {
-      distance_gain = closest_distance.first - min_distance;
+      distance_gain = closest_distance.first - stl_params.min_distance;
     }
     else
     {
-      distance_gain = max_distance - closest_distance.second;
+      distance_gain = stl_params.max_distance - closest_distance.second;
     }
 
     return distance_gain;
   }
 
-  double score(std::shared_ptr<point_rtree> rtree, double ltl_lambda, double min_distance,
-               double max_distance, bool min_distance_active, bool max_distance_active,
-               double max_search_distance, double radius, double step_size,
-               std::map<int, std::pair<geometry_msgs::Pose, double>> routers,
-               bool routers_active, double lambda)
+  double score(std::shared_ptr<point_rtree> rtree, double radius, double lambda,
+               const STLParams& stl_params)
   {
-    if (score_rtree_ && parent_ == score_parent_)
+    // if (rtree == score_rtree_ && parent_ == score_parent_)
+    // {
+    //   return score_;
+    // }
+
+    // score_rtree_ = rtree;
+    // score_parent_ = parent_;
+
+    if (!parent_)
     {
+      score_ = gain_;
       return score_;
     }
 
-    score_rtree_ = rtree;
-    score_parent_ = parent_;
-
-    if (!this->parent_)
-    {
-      score_ = this->gain_;
-      return score_;
-    }
-
-    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance,
-                                           min_distance_active, max_distance_active,
-                                           max_search_distance, radius, step_size);
+    double distance_gain = getDistanceGain(rtree, radius, stl_params);
 
     double max_router_difference = distance_gain;
-    if (routers_active)
+    if (stl_params.routers_active)
     {
-      max_router_difference = getMaxRouterDifference(routers, step_size);
+      max_router_difference =
+          getMaxRouterDifference(stl_params.routers, stl_params.step_size);
     }
 
-    score_ = this->parent_->score(rtree, ltl_lambda, min_distance, max_distance,
-                                  min_distance_active, max_distance_active,
-                                  max_search_distance, radius, step_size, routers,
-                                  routers_active, lambda) +
-             this->gain_ *
-                 exp(-lambda *
-                     (this->distance(this->parent_) *
-                      std::fmax(std::exp(-ltl_lambda *
-                                         std::min(distance_gain, max_router_difference)),
-                                1)));
+    score_ =
+        parent_->score(rtree, radius, lambda, stl_params) +
+        gain_ * exp(-lambda *
+                    (distance(parent_) *
+                     std::fmax(std::exp(-stl_params.lambda *
+                                        std::min(distance_gain, max_router_difference)),
+                               1)));
     return score_;
   }
 
-  double cost(std::shared_ptr<point_rtree> rtree, double ltl_lambda, double min_distance,
-              double max_distance, bool min_distance_active, bool max_distance_active,
-              double max_search_distance, double radius, double step_size,
-              std::map<int, std::pair<geometry_msgs::Pose, double>> routers,
-              bool routers_active)
+  double cost(std::shared_ptr<point_rtree> rtree, double radius,
+              const STLParams& stl_params)
   {
-    if (cost_rtree_ && parent_ == cost_parent_)
+    if (rtree == cost_rtree_ && parent_ == cost_parent_)
     {
       return cost_;
     }
@@ -210,29 +169,27 @@ public:
     cost_rtree_ = rtree;
     cost_parent_ = parent_;
 
-    if (!this->parent_)
+    if (!parent_)
     {
       cost_ = 0;
       return cost_;
     }
 
-    double distance_gain = getDistanceGain(rtree, ltl_lambda, min_distance, max_distance,
-                                           min_distance_active, max_distance_active,
-                                           max_search_distance, radius, step_size);
+    double distance_gain = getDistanceGain(rtree, radius, stl_params);
 
     double max_router_difference = distance_gain;
-    if (routers_active)
+    if (stl_params.routers_active)
     {
-      max_router_difference = getMaxRouterDifference(routers, step_size);
+      max_router_difference =
+          getMaxRouterDifference(stl_params.routers, stl_params.step_size);
     }
 
-    cost_ =
-        (this->distance(this->parent_) *
-         std::fmax(std::exp(-ltl_lambda * std::min(distance_gain, max_router_difference)),
-                   1)) +
-        this->parent_->cost(rtree, ltl_lambda, min_distance, max_distance,
-                            min_distance_active, max_distance_active, max_search_distance,
-                            radius, step_size, routers, routers_active);
+    cost_ = (distance(parent_) *
+             std::fmax(std::exp(-stl_params.lambda *
+                                std::min(distance_gain, max_router_difference)),
+                       1)) +
+            parent_->cost(rtree, radius, stl_params);
+
     return cost_;
   }
 

@@ -19,8 +19,8 @@ aep/gain/lambda: 0.5
 aep/gain/sigma_thresh: 0.2
 aep/tree/extension_range: 1.0
 aep/tree/max_sampling_radius: 10
-aep/tree/initial_iterations: 100
-aep/tree/cutoff_iterations: 400
+aep/tree/initial_iterations: 30
+aep/tree/cutoff_iterations: 100
 
 rrt/min_nodes: 100
 rrt/max_nodes: 1000
